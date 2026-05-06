@@ -1,0 +1,1458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA 통합 관리</title>
+<script src="exceljs.min.js"></script>
+<style>
+:root {
+  --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a; --border:#2e3250;
+  --accent:#4f8cff; --accent2:#7c3aed; --pass:#22c55e; --fail:#ef4444;
+  --warn:#f59e0b; --deploy:#0ea5e9; --text:#e2e8f0; --muted:#8892b0;
+  --font:'Pretendard','Noto Sans KR',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;overflow:hidden;}
+
+/* ── 툴바 ── */
+.toolbar{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 20px;display:flex;align-items:stretch;height:52px;gap:0;
+  position:sticky;top:0;z-index:300;
+}
+.brand{display:flex;flex-direction:column;justify-content:center;padding-right:20px;border-right:1px solid var(--border);margin-right:12px;min-width:120px;}
+.brand h1{font-size:.95rem;font-weight:700;background:linear-gradient(90deg,var(--accent),#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.brand p{font-size:.62rem;color:var(--muted);}
+.tabs{display:flex;align-items:stretch;}
+.tab{
+  padding:0 18px;border:none;background:transparent;color:var(--muted);
+  font-size:.82rem;font-weight:600;cursor:pointer;position:relative;font-family:var(--font);
+  display:flex;align-items:center;gap:6px;white-space:nowrap;transition:color .15s;
+}
+.tab::after{content:'';position:absolute;bottom:0;left:12px;right:12px;height:2px;border-radius:2px 2px 0 0;transition:background .15s;}
+.tab.mgr.on{color:var(--warn);} .tab.mgr.on::after{background:var(--warn);}
+.tab.tst.on{color:var(--accent);} .tab.tst.on::after{background:var(--accent);}
+.tab.dep.on{color:var(--deploy);} .tab.dep.on::after{background:var(--deploy);}
+.tab:hover{color:var(--text);}
+.actions{margin-left:auto;display:flex;align-items:center;gap:7px;}
+.tbtn{
+  padding:7px 13px;border-radius:7px;border:none;cursor:pointer;
+  font-size:.78rem;font-weight:600;display:flex;align-items:center;gap:5px;
+  transition:opacity .15s,transform .1s;font-family:var(--font);white-space:nowrap;
+}
+.tbtn:hover{opacity:.85;transform:translateY(-1px);}
+.tbtn.xl{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;}
+.tbtn.ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+
+/* ── 전체 레이아웃 ── */
+.tab-page{display:none;height:calc(100vh - 52px);}
+.tab-page.on{display:grid;}
+.tab-page.two-col{grid-template-columns:320px 1fr;}
+.tab-page.full{grid-template-columns:1fr;}
+
+/* ── 사이드바 ── */
+.sidebar{
+  border-right:1px solid var(--border);background:var(--surface);
+  display:flex;flex-direction:column;gap:0;
+  height:calc(100vh - 52px);overflow:hidden;
+}
+/* 각 섹션 헤더 */
+.sb-hdr{
+  padding:10px 14px;display:flex;align-items:center;justify-content:space-between;
+  cursor:pointer;font-size:.79rem;font-weight:600;letter-spacing:.3px;
+  border-bottom:1px solid var(--border);user-select:none;flex-shrink:0;
+  background:var(--surface);
+}
+.sb-hdr .arrow{font-size:.6rem;color:var(--muted);transition:transform .2s;}
+.sb-hdr.open .arrow{transform:rotate(180deg);}
+.sb-hdr.c-mgr{color:var(--warn);}
+.sb-hdr.c-tst{color:var(--accent);}
+.sb-hdr.c-dep{color:var(--deploy);}
+/* 각 섹션 바디 - 개별 스크롤 */
+.sb-body{
+  overflow-y:auto;overflow-x:hidden;padding:12px;
+  display:flex;flex-direction:column;gap:8px;
+  border-bottom:1px solid var(--border);
+  /* 기본: 접힌 상태 */
+  max-height:0;transition:max-height .2s ease;
+}
+.sb-body.open{max-height:320px;}
+.sb-body.open.tall{max-height:440px;}
+.sb-body.open.xl{max-height:600px;}
+.sb-body::-webkit-scrollbar{width:3px;}
+.sb-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+
+/* ── 폼 요소 ── */
+label{display:block;font-size:.68rem;color:var(--muted);margin-bottom:3px;font-weight:500;}
+input,select,textarea{
+  width:100%;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:7px;
+  color:var(--text);font-family:var(--font);font-size:.82rem;padding:7px 10px;outline:none;
+  transition:border-color .2s;box-sizing:border-box;
+}
+input[type="datetime-local"],input[type="date"]{font-size:.78rem;padding:7px 8px;}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;min-height:48px;}
+select option{background:var(--surface2);}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.cat-item{display:flex;align-items:center;gap:6px;padding:6px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;}
+.cat-item span{flex:1;font-size:.78rem;}
+.cat-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
+.pf-row{display:flex;gap:4px;}
+.pf-btn{
+  flex:1;padding:6px 4px;border-radius:6px;border:1.5px solid var(--border);
+  background:transparent;color:var(--muted);font-size:.74rem;font-weight:700;
+  cursor:pointer;transition:all .15s;font-family:var(--font);
+}
+.pf-btn.pass.on{border-color:var(--pass);color:var(--pass);background:rgba(34,197,94,.09);}
+.pf-btn.fail.on{border-color:var(--fail);color:var(--fail);background:rgba(239,68,68,.09);}
+.pf-btn.na.on{border-color:var(--warn);color:var(--warn);background:rgba(245,158,11,.09);}
+.btn-sm{padding:5px 10px;border-radius:6px;border:none;cursor:pointer;font-size:.73rem;font-weight:600;font-family:var(--font);transition:opacity .15s;}
+.btn-sm.add{background:var(--accent);color:#fff;}
+.btn-sm.add.dep{background:var(--deploy);}
+.btn-sm.del{background:rgba(239,68,68,.12);color:var(--fail);border:1px solid rgba(239,68,68,.22);}
+.btn-sm:hover{opacity:.8;}
+.add-full{
+  width:100%;padding:8px;border-radius:7px;border:none;cursor:pointer;
+  font-size:.8rem;font-weight:700;color:#fff;font-family:var(--font);
+  display:flex;align-items:center;justify-content:center;gap:5px;transition:opacity .15s;
+}
+.add-full:hover{opacity:.85;}
+.add-full.tst{background:linear-gradient(135deg,var(--accent),var(--accent2));}
+.add-full.dep{background:linear-gradient(135deg,var(--deploy),#0284c7);}
+.add-full.mgr{background:linear-gradient(135deg,var(--warn),#d97706);}
+
+/* ── 케이스 아이템 (목록) ── */
+.case-item{
+  background:var(--bg);border:1px solid var(--border);border-radius:6px;
+  padding:6px 8px;display:flex;align-items:center;gap:6px;
+}
+.case-item .cid{font-family:monospace;font-size:.7rem;flex-shrink:0;}
+.case-item .cname{flex:1;font-size:.74rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.case-item .cpf{font-size:.66rem;padding:2px 6px;border-radius:7px;flex-shrink:0;}
+
+/* ── 메인 영역 ── */
+.main-area{overflow-y:auto;height:calc(100vh - 52px);}
+.main-area::-webkit-scrollbar{width:6px;}
+.main-area::-webkit-scrollbar-thumb{background:#2e3250;border-radius:4px;}
+
+/* ════════════════════════════════
+   탭1: 케이스 관리
+════════════════════════════════ */
+.mgr-main{padding:20px;}
+.stats-row{display:flex;gap:14px;margin-bottom:18px;}
+.stat-box{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:14px 20px;text-align:center;min-width:90px;
+}
+.stat-box .sv{font-size:1.5rem;font-weight:800;}
+.stat-box .sl{font-size:.68rem;color:var(--muted);margin-top:2px;font-weight:500;}
+.stat-box.total .sv{color:var(--accent);}
+.stat-box.pass .sv{color:var(--pass);}
+.stat-box.fail .sv{color:var(--fail);}
+
+.tbl-wrap{border-radius:10px;border:1px solid var(--border);overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.8rem;}
+thead th{
+  background:#2d3248;color:var(--text);font-weight:700;font-size:.69rem;
+  letter-spacing:.4px;text-transform:uppercase;padding:10px 13px;
+  text-align:left;border-bottom:2px solid var(--accent);border-right:1px solid var(--border);
+  white-space:nowrap;
+}
+thead th:last-child{border-right:none;}
+tbody tr{border-bottom:1px solid rgba(46,50,80,.5);transition:background .1s;}
+tbody tr:hover{background:rgba(79,140,255,.04);}
+tbody tr:last-child{border-bottom:none;}
+td{padding:9px 13px;vertical-align:middle;}
+.cell-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:160px;}
+.badge{display:inline-block;padding:2px 9px;border-radius:14px;font-size:.68rem;font-weight:700;}
+.badge.pos{background:rgba(34,197,94,.12);color:var(--pass);border:1px solid rgba(34,197,94,.22);}
+.badge.neg{background:rgba(245,158,11,.12);color:var(--warn);border:1px solid rgba(245,158,11,.22);}
+.badge.pass{background:rgba(34,197,94,.12);color:var(--pass);border:1px solid rgba(34,197,94,.22);}
+.badge.fail{background:rgba(239,68,68,.12);color:var(--fail);border:1px solid rgba(239,68,68,.22);}
+.badge.na{background:rgba(139,146,176,.1);color:var(--muted);border:1px solid rgba(139,146,176,.18);}
+.empty{text-align:center;padding:44px;color:var(--muted);font-size:.88rem;}
+
+/* ════════════════════════════════
+   탭2-3: 리포트 미리보기
+════════════════════════════════ */
+.preview-wrap{
+  background:#cdd1db;padding:22px;
+  display:flex;flex-direction:column;align-items:center;gap:16px;
+}
+.page{
+  background:white;width:210mm;min-height:297mm;padding:18mm 22mm;
+  box-shadow:0 4px 20px rgba(0,0,0,.22);color:#1a1a2e;
+  font-family:'Noto Sans KR','Malgun Gothic',sans-serif;position:relative;
+}
+/* 표지 */
+.cover{display:flex;flex-direction:column;min-height:261mm;}
+.cover-top{text-align:center;padding-top:34mm;}
+.cv-icon{width:68px;height:68px;border-radius:13px;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;font-size:1.7rem;color:#fff;}
+.cv-icon.tst{background:linear-gradient(135deg,#4f8cff,#7c3aed);}
+.cv-icon.dep{background:linear-gradient(135deg,#0ea5e9,#0284c7);}
+.cv-badge{display:inline-block;padding:3px 12px;border-radius:18px;font-size:8pt;font-weight:700;letter-spacing:.5px;margin-bottom:16px;}
+.cv-badge.tst{background:#eef2ff;color:#4f8cff;border:1px solid #c7d7fe;}
+.cv-badge.dep{background:#e0f2fe;color:#0284c7;border:1px solid #bae6fd;}
+.cv-title{font-size:26pt;font-weight:900;color:#0f172a;letter-spacing:-1px;line-height:1.1;margin-bottom:6px;}
+.cv-sub{font-size:11pt;font-weight:600;}
+.cv-sub.tst{color:#4f8cff;} .cv-sub.dep{color:#0ea5e9;}
+.cv-line{border:none;height:3px;margin:14mm 0 0;border-radius:2px;}
+.cv-line.tst{background:linear-gradient(90deg,#4f8cff,#7c3aed);}
+.cv-line.dep{background:linear-gradient(90deg,#0ea5e9,#7c3aed);}
+.cv-info{flex:1;display:flex;flex-direction:column;justify-content:center;padding-top:6mm;}
+.cv-tbl{width:100%;border-collapse:collapse;}
+.cv-tbl td{padding:8px 12px;font-size:9.5pt;}
+.cv-tbl td:first-child{color:#64748b;font-weight:600;width:110px;border-right:2px solid #e2e8f0;}
+.cv-tbl td:last-child{color:#0f172a;font-weight:500;}
+.cv-tbl tr{border-bottom:1px solid #f1f5f9;}
+.cv-foot{text-align:center;padding-top:8mm;border-top:1px solid #e2e8f0;font-size:8pt;color:#94a3b8;}
+.cv-company{font-size:10.5pt;font-weight:700;color:#334155;margin-bottom:3px;}
+/* 섹션 타이틀 */
+.r-sec{margin-bottom:8mm;}
+.r-title{font-size:12pt;font-weight:800;color:#0f172a;padding-bottom:5px;margin-bottom:5mm;display:flex;align-items:center;gap:6px;}
+.r-title.tst{border-bottom:3px solid #4f8cff;}
+.r-title.dep{border-bottom:3px solid #0ea5e9;}
+.r-num{color:#fff;border-radius:50%;width:21px;height:21px;display:flex;align-items:center;justify-content:center;font-size:9.5pt;font-weight:800;flex-shrink:0;}
+.r-num.tst{background:#4f8cff;} .r-num.dep{background:#0ea5e9;}
+/* 요약 */
+.sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:4mm;}
+.scard{border-radius:8px;padding:11px;text-align:center;}
+.scard .sv{font-size:19pt;font-weight:900;line-height:1;}
+.scard .sl{font-size:7.5pt;color:#64748b;margin-top:3px;font-weight:600;}
+.scard.t1{background:#f0f4ff;border:2px solid #c7d7fe;} .scard.t1 .sv{color:#4f8cff;}
+.scard.t2{background:#f0fdf4;border:2px solid #bbf7d0;} .scard.t2 .sv{color:#16a34a;}
+.scard.t3{background:#fff1f2;border:2px solid #fecdd3;} .scard.t3 .sv{color:#dc2626;}
+.scard.t4{background:#fdf4ff;border:2px solid #e9d5ff;} .scard.t4 .sv{color:#9333ea;}
+.scard.d1{background:#f0f9ff;border:2px solid #bae6fd;} .scard.d1 .sv{color:#0ea5e9;}
+.prog{background:#f1f5f9;border-radius:6px;height:11px;overflow:hidden;margin-bottom:2mm;}
+.prog-fill{height:100%;border-radius:6px;}
+.prog-fill.tst{background:linear-gradient(90deg,#4f8cff,#7c3aed);}
+.prog-fill.dep{background:linear-gradient(90deg,#0ea5e9,#0284c7);}
+/* r-table */
+.rtbl{width:100%;border-collapse:collapse;font-size:8.5pt;}
+.rtbl th{background:#f8fafc;padding:7px 10px;text-align:left;border:1px solid #e2e8f0;color:#475569;font-weight:700;font-size:7.5pt;}
+.rtbl td{padding:7px 10px;border:1px solid #e2e8f0;vertical-align:top;color:#1e293b;}
+.rtbl tr:nth-child(even) td{background:#fafafa;}
+/* 카테고리 헤더 */
+.cat-hdr{border-radius:0 7px 7px 0;padding:8px 13px;margin-bottom:3mm;display:flex;align-items:center;justify-content:space-between;}
+.cat-hdr.tst{background:linear-gradient(135deg,#f0f4ff,#e8f0fe);border-left:4px solid #4f8cff;}
+.cat-hdr.dep{background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border-left:4px solid #0ea5e9;}
+.cat-name{font-size:10.5pt;font-weight:800;}
+.cat-name.tst{color:#1e3a8a;} .cat-name.dep{color:#075985;}
+.cstats{display:flex;gap:6px;}
+.cst{padding:2px 8px;border-radius:9px;font-size:7pt;font-weight:700;}
+.cst.p{background:#dcfce7;color:#16a34a;} .cst.f{background:#fee2e2;color:#dc2626;}
+.cst.t{background:#dbeafe;color:#1d4ed8;} .cst.td{background:#e0f2fe;color:#0284c7;}
+/* 케이스 카드 */
+.tc{border:1px solid #e2e8f0;border-radius:7px;margin-bottom:3mm;overflow:hidden;break-inside:avoid;}
+.tc-hd{background:#f8fafc;padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #e2e8f0;}
+.tc-id{font-family:monospace;font-size:7.5pt;font-weight:700;padding:2px 6px;border-radius:3px;flex-shrink:0;}
+.tc-id.tst{color:#4f8cff;background:#eef2ff;} .tc-id.dep{color:#0ea5e9;background:#e0f2fe;}
+.tc-name{flex:1;font-size:9pt;font-weight:700;color:#0f172a;}
+.tc-badge{padding:2px 8px;border-radius:9px;font-size:7pt;font-weight:700;flex-shrink:0;}
+.tc-badge.pass{background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0;}
+.tc-badge.fail{background:#fee2e2;color:#dc2626;border:1px solid #fecdd3;}
+.tc-badge.skip,.tc-badge.na{background:#fef3c7;color:#92400e;border:1px solid #fde68a;}
+.tc-badge.pos{background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;}
+.tc-badge.neg{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;}
+.tc-bd{padding:8px 12px;display:flex;flex-direction:column;gap:5px;}
+.tc-row{display:grid;grid-template-columns:80px 1fr;gap:4px;font-size:8pt;}
+.tc-row .l{color:#64748b;font-weight:600;} .tc-row .v{color:#1e293b;}
+.tc-meta{display:flex;gap:10px;padding-top:4px;border-top:1px solid #f1f5f9;font-size:7.5pt;color:#64748b;}
+/* 증적 */
+.ev-area{padding:7px 12px;background:#f8fafc;border-top:1px solid #e2e8f0;}
+.ev-label{font-size:7pt;font-weight:600;color:#64748b;margin-bottom:5px;}
+.ev-photos{display:flex;flex-wrap:wrap;gap:6px;}
+.ev-photos img{width:120px;height:78px;object-fit:cover;border-radius:5px;border:1px solid #e2e8f0;}
+.ev-add{
+  width:120px;height:78px;border:2px dashed #cbd5e1;border-radius:5px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  cursor:pointer;gap:3px;color:#94a3b8;font-size:7pt;transition:border-color .2s;
+}
+.ev-add:hover{border-color:#4f8cff;color:#4f8cff;}
+/* 카드 인라인 편집 */
+.tc-exec{padding:8px 12px;background:#f0f4ff;border-top:1px solid #e2e8f0;display:flex;flex-direction:column;gap:6px;}
+.tc-exec-label{font-size:.65rem;color:#64748b;font-weight:600;margin-bottom:1px;}
+.tc-efield{width:100%;background:#fff;border:1px solid #cbd5e1;border-radius:5px;color:#1e293b;font-family:inherit;font-size:.8rem;padding:5px 8px;outline:none;transition:border-color .15s;}
+.tc-efield:focus{border-color:#4f8cff;}
+textarea.tc-efield{resize:vertical;min-height:44px;}
+.tc-ef2{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.tc-pf-row{display:flex;gap:5px;flex-wrap:wrap;}
+.tc-pf-row .pf-btn{padding:4px 10px;font-size:.72rem;}
+.tc-cat-row{display:flex;align-items:center;gap:6px;}
+.tc-cat-row select{background:#fff;border:1px solid #cbd5e1;border-radius:5px;color:#1e293b;font-family:inherit;font-size:.78rem;padding:4px 7px;flex:1;}
+/* 배포 박스 */
+.dep-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:11px 15px;margin-bottom:5mm;}
+.dep-row{display:flex;gap:16px;flex-wrap:wrap;}
+.dbi .dl{font-size:7pt;color:#64748b;font-weight:600;display:block;}
+.dbi .dv{font-size:9pt;font-weight:700;color:#0f172a;}
+.env-badge{display:inline-block;padding:2px 9px;border-radius:9px;font-size:8pt;font-weight:700;}
+.env-badge.prod{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;}
+.env-badge.staging{background:#fef3c7;color:#92400e;border:1px solid #fde68a;}
+.env-badge.dev{background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0;}
+/* 페이지 푸터 */
+.pfoot{position:absolute;bottom:10mm;left:22mm;right:22mm;display:flex;justify-content:space-between;font-size:7pt;color:#94a3b8;border-top:1px solid #f1f5f9;padding-top:3px;}
+
+/* ── 토스트 ── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:10px 15px;color:var(--text);font-size:.82rem;font-weight:500;opacity:0;transform:translateY(6px);transition:all .25s;z-index:9999;}
+.toast.show{opacity:1;transform:translateY(0);}
+
+/* ── 검색/필터 바 ── */
+.filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+.filter-bar input{background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:.8rem;padding:6px 11px;outline:none;width:200px;transition:border-color .2s;}
+.filter-bar input:focus{border-color:var(--accent);}
+.filter-bar select{background:var(--surface);border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:.8rem;padding:6px 10px;outline:none;cursor:pointer;}
+.filter-bar select option{background:var(--surface2);}
+.filter-bar .f-clear{padding:6px 11px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:.78rem;cursor:pointer;font-family:var(--font);}
+.filter-bar .f-clear:hover{color:var(--text);}
+/* ── 드래그 앤 드롭 ── */
+tr.drag-over{background:rgba(79,140,255,.13)!important;outline:2px dashed var(--accent);}
+tr.dragging{opacity:.4;}
+td.drag-handle{cursor:grab;color:var(--muted);font-size:1rem;text-align:center;padding:9px 6px!important;user-select:none;}
+td.drag-handle:active{cursor:grabbing;}
+
+@media print{
+  @page{size:A4;margin:0;}
+  body{overflow:visible!important;background:white!important;}
+  /* 탭 전환 UI 전부 숨김 */
+  .toolbar,.sidebar,.mgr-main,#tab-mgr,#print-out{display:none!important;}
+  /* 활성 탭 페이지만 단순 블록으로 */
+  .tab-page{display:none!important;}
+  .tab-page.on{display:block!important;}
+  /* 그리드 해제, 높이/오버플로 초기화 */
+  .tab-page.two-col{grid-template-columns:unset;}
+  .main-area{
+    height:auto!important;max-height:none!important;
+    overflow:visible!important;
+  }
+  /* 프리뷰 래퍼 */
+  .preview-wrap{
+    background:white!important;padding:0!important;gap:0!important;
+    display:block!important;align-items:unset!important;
+  }
+  /* A4 페이지 */
+  .page{
+    width:210mm!important;min-height:0!important;
+    box-shadow:none!important;padding:14mm 18mm!important;
+    page-break-after:always;margin:0 auto;
+  }
+  .page:last-child{page-break-after:auto;}
+  .tc{page-break-inside:avoid;}
+  .tc-exec{display:none!important;}
+  .ev-add{display:none!important;}
+  .ev-photos img{width:160px;height:104px;}
+}
+</style>
+</head>
+<body>
+<div id="print-out" style="display:none;"></div>
+
+<!-- ── 툴바 ── -->
+<div class="toolbar">
+  <div class="brand"><h1>QA 통합 관리</h1><p>케이스 관리 · 결과서 · 배포결과서</p></div>
+  <div class="tabs">
+    <button class="tab mgr on" onclick="switchTab('mgr')">📝 케이스 관리</button>
+    <button class="tab tst" onclick="switchTab('tst')">📋 테스트결과서</button>
+    <button class="tab dep" onclick="switchTab('dep')">🚀 배포결과서</button>
+  </div>
+  <div class="actions">
+    <button class="tbtn ghost" onclick="exportJSON()" title="현재 데이터를 JSON 파일로 저장">💾 백업</button>
+    <label class="tbtn ghost" style="cursor:pointer;" title="JSON 파일에서 데이터 불러오기">📂 복원<input type="file" accept=".json" style="display:none" onchange="importJSON(this)"></label>
+    <button class="tbtn ghost" onclick="window.print()">🖨 인쇄</button>
+    <button class="tbtn xl" onclick="exportExcel()">⬇ 엑셀 다운로드</button>
+  </div>
+</div>
+
+<!-- ════ 탭1: 케이스 관리 ════ -->
+<div class="tab-page two-col on" id="tab-mgr">
+  <div class="sidebar">
+    <div class="sb-hdr c-mgr open" onclick="toggleSb(this)">📝 케이스 추가 <span class="arrow">▼</span></div>
+    <div class="sb-body open tall">
+      <div class="fg">
+        <div><label>케이스 ID</label><input id="m-id" placeholder="TC-001"></div>
+        <div><label>구분</label><select id="m-type"><option value="Positive">Positive</option><option value="Negative">Negative</option></select></div>
+      </div>
+      <div><label>테스트 항목명</label><input id="m-name" placeholder="예: 로그인 버튼 클릭 시 정상 이동"></div>
+      <div><label>입력값</label><input id="m-input" placeholder="예: ID: test@test.com / PW: 1234"></div>
+      <div><label>기대 결과</label><textarea id="m-expected" placeholder="예: 메인 화면으로 이동되어야 함"></textarea></div>
+      <div><label>실제 결과</label><textarea id="m-actual" placeholder="예: 메인 화면으로 정상 이동됨"></textarea></div>
+      <div><label>Pass / Fail</label>
+        <div class="pf-row">
+          <button class="pf-btn pass on" onclick="mSetPF('Pass',this)">PASS</button>
+          <button class="pf-btn fail" onclick="mSetPF('Fail',this)">FAIL</button>
+          <button class="pf-btn na" onclick="mSetPF('N/A',this)">N/A</button>
+        </div>
+      </div>
+      <div class="fg">
+        <div><label>담당자</label><input id="m-owner" placeholder="홍길동"></div>
+        <div><label>수행일자</label><input type="date" id="m-date"></div>
+      </div>
+      <button class="add-full mgr" id="m-submit-btn" onclick="mSubmit()">+ 케이스 추가</button>
+      <button class="tbtn ghost" id="m-cancel-btn" style="display:none;width:100%;justify-content:center;font-size:.76rem;margin-top:4px;" onclick="mCancelEdit()">✕ 수정 취소</button>
+    </div>
+
+    <div class="sb-hdr c-mgr open" onclick="toggleSb(this)">📊 통계 <span class="arrow">▼</span></div>
+    <div class="sb-body open">
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="display:flex;justify-content:space-between;font-size:.78rem;">
+          <span style="color:var(--muted);">전체</span><span id="ms-total" style="font-weight:700;color:var(--accent);">0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.78rem;">
+          <span style="color:var(--muted);">PASS</span><span id="ms-pass" style="font-weight:700;color:var(--pass);">0</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.78rem;">
+          <span style="color:var(--muted);">FAIL</span><span id="ms-fail" style="font-weight:700;color:var(--fail);">0</span>
+        </div>
+        <div style="background:var(--bg);border-radius:6px;height:8px;overflow:hidden;margin-top:2px;">
+          <div id="ms-bar" style="height:100%;border-radius:6px;background:linear-gradient(90deg,var(--pass),#16a34a);transition:width .3s;"></div>
+        </div>
+        <div id="ms-rate" style="text-align:right;font-size:.7rem;color:var(--muted);">통과율 0%</div>
+      </div>
+    </div>
+  </div>
+  <div class="main-area">
+    <div class="mgr-main">
+      <div class="stats-row">
+        <div class="stat-box total"><div class="sv" id="st-total">0</div><div class="sl">전체</div></div>
+        <div class="stat-box pass"><div class="sv" id="st-pass">0</div><div class="sl">PASS</div></div>
+        <div class="stat-box fail"><div class="sv" id="st-fail">0</div><div class="sl">FAIL</div></div>
+      </div>
+      <div class="filter-bar">
+        <input id="f-search" placeholder="🔍 ID 또는 항목명 검색" oninput="renderMgr()">
+        <select id="f-type" onchange="renderMgr()">
+          <option value="">전체 구분</option>
+          <option value="Positive">Positive</option>
+          <option value="Negative">Negative</option>
+        </select>
+        <select id="f-pf" onchange="renderMgr()">
+          <option value="">전체 P/F</option>
+          <option value="Pass">Pass</option>
+          <option value="Fail">Fail</option>
+          <option value="N/A">N/A</option>
+        </select>
+        <button class="f-clear" onclick="clearFilter()">✕ 초기화</button>
+        <span id="f-count" style="font-size:.75rem;color:var(--muted);margin-left:4px;"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:30px;"></th>
+              <th>ID</th><th>테스트 항목명</th><th>구분</th><th>입력값</th>
+              <th>기대 결과</th><th>실제 결과</th><th>P/F</th>
+              <th>담당자</th><th>수행일자</th><th>수정</th><th>삭제</th>
+            </tr>
+          </thead>
+          <tbody id="m-tbody"></tbody>
+        </table>
+        <div class="empty" id="m-empty">📋 테스트 케이스를 추가해주세요</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ 탭2: 테스트결과서 ════ -->
+<div class="tab-page two-col" id="tab-tst">
+  <div class="sidebar">
+    <div class="sb-hdr c-tst open" onclick="toggleSb(this)">📋 표지 정보 <span class="arrow">▼</span></div>
+    <div class="sb-body open">
+      <div><label>회사/부서명</label><input id="t-company" placeholder="(주)회사명" oninput="renderTst()"></div>
+      <div><label>프로젝트명</label><input id="t-project" placeholder="프로젝트명" oninput="renderTst()"></div>
+      <div class="fg">
+        <div><label>시스템명</label><input id="t-system" placeholder="시스템명" oninput="renderTst()"></div>
+        <div><label>버전</label><input id="t-ver" placeholder="v1.0" oninput="renderTst()"></div>
+      </div>
+      <div><label>문서번호</label><input id="t-docnum" placeholder="QA-2026-001" oninput="renderTst()"></div>
+      <div class="fg">
+        <div><label>시작일</label><input type="date" id="t-start" oninput="renderTst()"></div>
+        <div><label>종료일</label><input type="date" id="t-end" oninput="renderTst()"></div>
+      </div>
+      <div><label>테스트 환경</label><input id="t-env" placeholder="Chrome 124, Android 14" oninput="renderTst()"></div>
+      <div class="fg">
+        <div><label>작성자</label><input id="t-author" placeholder="홍길동" oninput="renderTst()"></div>
+        <div><label>승인자</label><input id="t-approver" placeholder="김철수" oninput="renderTst()"></div>
+      </div>
+      <div><label>작성일</label><input type="date" id="t-date" oninput="renderTst()"></div>
+    </div>
+
+    <div class="sb-hdr c-tst open" onclick="toggleSb(this)">📁 카테고리 <span class="arrow">▼</span></div>
+    <div class="sb-body open">
+      <div id="t-catlist"></div>
+      <div style="display:flex;gap:6px;">
+        <input id="t-newcat" placeholder="카테고리 이름" style="flex:1;" onkeydown="if(event.key==='Enter')addCat('tst')">
+        <button class="btn-sm add" onclick="addCat('tst')">추가</button>
+      </div>
+    </div>
+
+    <div class="sb-hdr c-tst open" onclick="toggleSb(this)">⚡ 일괄 입력 <span class="arrow">▼</span></div>
+    <div class="sb-body open">
+      <div><label>수행자</label><input id="t-bulk-owner" placeholder="홍길동"></div>
+      <div><label>수행일자</label><input type="date" id="t-bulk-date"></div>
+      <div style="display:flex;gap:6px;margin-top:2px;">
+        <button class="btn-sm add" style="flex:1;" onclick="bulkApply('tst','all')">전체 적용</button>
+        <button class="btn-sm" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);" onclick="bulkApply('tst','empty')">빈 항목만</button>
+      </div>
+    </div>
+
+    <div class="sb-hdr c-tst open" onclick="toggleSb(this)">📊 케이스 목록 (<span id="t-cnt">0</span>건) <span class="arrow">▼</span></div>
+    <div class="sb-body open xl" id="t-caselist" style="gap:5px;"></div>
+  </div>
+  <div class="main-area preview-wrap" id="t-preview"></div>
+</div>
+
+<!-- ════ 탭3: 배포결과서 ════ -->
+<div class="tab-page two-col" id="tab-dep">
+  <div class="sidebar">
+    <div class="sb-hdr c-dep open" onclick="toggleSb(this)">📋 배포 정보 <span class="arrow">▼</span></div>
+    <div class="sb-body open">
+      <div><label>회사/부서명</label><input id="d-company" placeholder="(주)회사명" oninput="renderDep()"></div>
+      <div><label>프로젝트명</label><input id="d-project" placeholder="프로젝트명" oninput="renderDep()"></div>
+      <div class="fg">
+        <div><label>배포 버전</label><input id="d-ver" placeholder="v2.3.1" oninput="renderDep()"></div>
+        <div><label>배포 환경</label>
+          <select id="d-env" onchange="renderDep()">
+            <option>Production</option><option>Staging</option><option>Development</option><option>기타</option>
+          </select>
+        </div>
+      </div>
+      <div><label>문서번호</label><input id="d-docnum" placeholder="DEPLOY-2026-001" oninput="renderDep()"></div>
+      <div><label>배포 유형</label>
+        <select id="d-type" onchange="renderDep()">
+          <option>정기 배포</option><option>긴급 배포 (Hotfix)</option><option>신규 기능 배포</option><option>패치 배포</option><option>롤백</option>
+        </select>
+      </div>
+      <div><label>배포 시작</label><input type="datetime-local" id="d-start" oninput="renderDep()"></div>
+      <div><label>배포 완료</label><input type="datetime-local" id="d-end" oninput="renderDep()"></div>
+      <div class="fg">
+        <div><label>배포자</label><input id="d-deployer" placeholder="홍길동" oninput="renderDep()"></div>
+        <div><label>승인자</label><input id="d-approver" placeholder="김철수" oninput="renderDep()"></div>
+      </div>
+      <div><label>작성일</label><input type="date" id="d-date" oninput="renderDep()"></div>
+      <div><label>대상 서버</label><input id="d-target" placeholder="api.example.com" oninput="renderDep()"></div>
+      <div><label>배포 내용 요약</label><textarea id="d-summary" placeholder="주요 변경사항 요약" oninput="renderDep()"></textarea></div>
+    </div>
+
+    <div class="sb-hdr c-dep open" onclick="toggleSb(this)">📁 카테고리 <span class="arrow">▼</span></div>
+    <div class="sb-body open">
+      <div id="d-catlist"></div>
+      <div style="display:flex;gap:6px;">
+        <input id="d-newcat" placeholder="카테고리 이름" style="flex:1;" onkeydown="if(event.key==='Enter')addCat('dep')">
+        <button class="btn-sm add dep" onclick="addCat('dep')">추가</button>
+      </div>
+    </div>
+
+    <div class="sb-hdr c-dep open" onclick="toggleSb(this)">⚡ 일괄 입력 <span class="arrow">▼</span></div>
+    <div class="sb-body open">
+      <div><label>수행자</label><input id="d-bulk-owner" placeholder="홍길동"></div>
+      <div><label>수행일시</label><input type="datetime-local" id="d-bulk-date"></div>
+      <div style="display:flex;gap:6px;margin-top:2px;">
+        <button class="btn-sm add dep" style="flex:1;" onclick="bulkApply('dep','all')">전체 적용</button>
+        <button class="btn-sm" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);" onclick="bulkApply('dep','empty')">빈 항목만</button>
+      </div>
+      <button class="add-full dep" style="margin-top:6px;" onclick="bulkComplete()">✅ 일괄 완료 처리</button>
+    </div>
+
+    <div class="sb-hdr c-dep open" onclick="toggleSb(this)">📊 항목 목록 (<span id="d-cnt">0</span>건) <span class="arrow">▼</span></div>
+    <div class="sb-body open xl" id="d-caselist" style="gap:5px;"></div>
+  </div>
+  <div class="main-area preview-wrap" id="d-preview"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════
+   데이터 / 저장
+══════════════════════ */
+const SK = 'qa_all_v2';
+const TCOLS = ['#4f8cff','#7c3aed','#16a34a','#dc2626','#d97706','#0891b2','#be185d'];
+const DCOLS = ['#0ea5e9','#7c3aed','#16a34a','#dc2626','#d97706','#be185d'];
+
+let db = {
+  mgr: { cases: [] },
+  tst: {
+    cover: { company:'',project:'',system:'',version:'v1.0',docNumber:'',start:'',end:'',environment:'',author:'',approver:'',date:tod() },
+    cats: [],
+    cases: []
+  },
+  dep: {
+    cover: { company:'',project:'',version:'',environment:'Production',docNumber:'',deployType:'정기 배포',start:'',end:'',deployer:'',approver:'',date:tod(),target:'',summary:'' },
+    cats: [
+      {id:'dc1',name:'배포 전 체크리스트',color:'#d97706'},
+      {id:'dc2',name:'배포 수행 항목',color:'#0ea5e9'},
+      {id:'dc3',name:'배포 후 검증',color:'#16a34a'},
+    ],
+    cases: []
+  }
+};
+
+let mPF='Pass', tPF='Pass', dPF='완료';
+let mEditIdx = -1;
+
+function tod(){ return new Date().toISOString().split('T')[0]; }
+
+function save(){ localStorage.setItem(SK, JSON.stringify(db)); }
+function load(){
+  const s = localStorage.getItem(SK);
+  if (!s) {
+    const old = localStorage.getItem('qa_cases');
+    if (old) { try { db.mgr.cases = JSON.parse(old); } catch(e){} }
+  } else {
+    try { db = JSON.parse(s); } catch(e){}
+  }
+  // 구버전 마이그레이션: tst/dep cases에 name 등이 있으면 mgr로 이동
+  db.tst.cases.forEach(tc=>{
+    if(tc.name && !db.mgr.cases.find(m=>m.id===tc.id))
+      db.mgr.cases.push({id:tc.id, name:tc.name, type:tc.type||'Positive', input:tc.input||'', expected:tc.expected||'', actual:'', pf:'Pass', owner:'', date:''});
+  });
+  db.dep.cases.forEach(dc=>{
+    if(dc.name && !db.mgr.cases.find(m=>m.id===dc.id))
+      db.mgr.cases.push({id:dc.id, name:dc.name, type:'Positive', input:dc.input||'', expected:dc.expected||'', actual:'', pf:'Pass', owner:'', date:''});
+  });
+  // execution-only 필드만 남기기
+  db.tst.cases=db.tst.cases.map(tc=>({id:tc.id,catId:tc.catId||'',actual:tc.actual||'',pf:tc.pf||'N/A',owner:tc.owner||'',date:tc.date||'',notes:tc.notes||'',evidence:tc.evidence||[]}));
+  db.dep.cases=db.dep.cases.map(dc=>({id:dc.id,catId:dc.catId||'',actual:dc.actual||'',pf:dc.pf||'미완료',owner:dc.owner||'',date:dc.date||'',notes:dc.notes||'',evidence:dc.evidence||[]}));
+  syncCases();
+  applyForms();
+  renderAll();
+}
+function applyForms(){
+  const tc=db.tst.cover, dc=db.dep.cover;
+  const g=id=>document.getElementById(id);
+  g('t-company').value=tc.company||''; g('t-project').value=tc.project||'';
+  g('t-system').value=tc.system||''; g('t-ver').value=tc.version||'v1.0';
+  g('t-docnum').value=tc.docNumber||''; g('t-start').value=tc.start||'';
+  g('t-end').value=tc.end||''; g('t-env').value=tc.environment||'';
+  g('t-author').value=tc.author||''; g('t-approver').value=tc.approver||'';
+  g('t-date').value=tc.date||tod();
+  g('d-company').value=dc.company||''; g('d-project').value=dc.project||'';
+  g('d-ver').value=dc.version||''; g('d-env').value=dc.environment||'Production';
+  g('d-docnum').value=dc.docNumber||''; g('d-type').value=dc.deployType||'정기 배포';
+  g('d-start').value=dc.start||''; g('d-end').value=dc.end||'';
+  g('d-deployer').value=dc.deployer||''; g('d-approver').value=dc.approver||'';
+  g('d-date').value=dc.date||tod(); g('d-target').value=dc.target||'';
+  g('d-summary').value=dc.summary||'';
+  g('m-date').value=tod();
+}
+
+/* ══ 탭 전환 ══ */
+function switchTab(t){
+  document.querySelectorAll('.tab-page').forEach(el=>el.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('on'));
+  document.getElementById(`tab-${t}`).classList.add('on');
+  document.querySelector(`.tab.${t}`).classList.add('on');
+}
+
+/* ══ 사이드바 섹션 토글 ══ */
+function toggleSb(hdr){
+  hdr.classList.toggle('open');
+  const body = hdr.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+/* ══════════════════════
+   탭1: 케이스 관리
+══════════════════════ */
+let mNext = () => {
+  const nums = db.mgr.cases.map(c=>parseInt(c.id.replace(/\D/g,''))||0);
+  return 'TC-' + String((nums.length?Math.max(...nums):0)+1).padStart(3,'0');
+};
+
+function mSetPF(v,btn){ mPF=v; btn.parentElement.querySelectorAll('.pf-btn').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); }
+
+function mSubmit(){
+  const name=v('m-name'); if(!name){ toast('항목명을 입력해주세요'); return; }
+  const data={id:v('m-id')||mNext(), name, type:v('m-type'), input:v('m-input'),
+    expected:v('m-expected'), actual:v('m-actual'), pf:mPF, owner:v('m-owner'), date:v('m-date')};
+  if(mEditIdx>=0){
+    data.id=db.mgr.cases[mEditIdx].id; // ID 유지
+    db.mgr.cases[mEditIdx]=data;
+    mCancelEdit(); toast('수정됐습니다 ✓');
+  } else {
+    db.mgr.cases.push(data);
+    ['m-id','m-name','m-input','m-expected','m-actual','m-owner'].forEach(i=>gv(i).value='');
+    gv('m-id').placeholder=mNext(); toast('케이스가 추가됐습니다 ✓');
+  }
+  syncCases(); save(); renderMgr(); renderTst(); renderDep();
+}
+
+function mEdit(i){
+  const c=db.mgr.cases[i]; mEditIdx=i;
+  gv('m-id').value=c.id; gv('m-name').value=c.name; gv('m-type').value=c.type||'Positive';
+  gv('m-input').value=c.input||''; gv('m-expected').value=c.expected||'';
+  gv('m-actual').value=c.actual||''; gv('m-owner').value=c.owner||''; gv('m-date').value=c.date||'';
+  mPF=c.pf||'Pass';
+  gv('m-id').disabled=true;
+  const pfMap={'Pass':'PASS','Fail':'FAIL','N/A':'N/A'};
+  document.querySelectorAll('#tab-mgr .sb-body .pf-btn').forEach(b=>{
+    b.classList.toggle('on', b.textContent.trim()===pfMap[mPF]);
+  });
+  gv('m-submit-btn').textContent='✔ 수정 완료';
+  gv('m-submit-btn').style.background='linear-gradient(135deg,#f59e0b,#d97706)';
+  gv('m-cancel-btn').style.display='flex';
+  // 사이드바 섹션 열기
+  const hdr=document.querySelector('#tab-mgr .sb-hdr.c-mgr');
+  if(hdr && !hdr.classList.contains('open')){ hdr.classList.add('open'); hdr.nextElementSibling.classList.add('open'); }
+  hdr.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function mCancelEdit(){
+  mEditIdx=-1;
+  ['m-id','m-name','m-input','m-expected','m-actual','m-owner'].forEach(i=>gv(i).value='');
+  gv('m-id').disabled=false; gv('m-id').placeholder=mNext();
+  gv('m-date').value=tod(); mPF='Pass';
+  document.querySelectorAll('#tab-mgr .sb-body .pf-btn').forEach((b,i)=>b.classList.toggle('on',i===0));
+  gv('m-submit-btn').textContent='+ 케이스 추가';
+  gv('m-submit-btn').style.background='';
+  gv('m-cancel-btn').style.display='none';
+}
+
+function mDel(i){ db.mgr.cases.splice(i,1); syncCases(); save(); renderMgr(); renderTst(); renderDep(); }
+
+function renderMgr(){
+  const cs=db.mgr.cases, tot=cs.length;
+  const pass=cs.filter(c=>c.pf==='Pass').length, fail=cs.filter(c=>c.pf==='Fail').length;
+  const rate=tot>0?Math.round((pass/tot)*100):0;
+  gv('st-total').textContent=tot; gv('st-pass').textContent=pass; gv('st-fail').textContent=fail;
+  gv('ms-total').textContent=tot; gv('ms-pass').textContent=pass; gv('ms-fail').textContent=fail;
+  gv('ms-bar').style.width=rate+'%'; gv('ms-rate').textContent=`통과율 ${rate}%`;
+  const tbody=gv('m-tbody'), empty=gv('m-empty');
+  if (!tot){ tbody.innerHTML=''; empty.style.display='block'; gv('f-count').textContent=''; return; }
+  // 필터 적용
+  const fSearch=(gv('f-search').value||'').toLowerCase();
+  const fType=gv('f-type').value;
+  const fPF=gv('f-pf').value;
+  const filtered=cs.map((c,i)=>({c,i})).filter(({c})=>{
+    if(fSearch && !c.id.toLowerCase().includes(fSearch) && !c.name.toLowerCase().includes(fSearch)) return false;
+    if(fType && c.type!==fType) return false;
+    if(fPF && c.pf!==fPF) return false;
+    return true;
+  });
+  gv('f-count').textContent=fSearch||fType||fPF?`${filtered.length}/${tot}건 표시`:'';
+  empty.style.display=filtered.length?'none':'block';
+  if(!filtered.length){ tbody.innerHTML=''; return; }
+  tbody.innerHTML=filtered.map(({c,i})=>`
+    <tr draggable="true" data-idx="${i}" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dragDrop(event,${i})" ondragleave="dragLeave(event)" style="${mEditIdx===i?'background:rgba(245,158,11,.1);outline:2px solid #f59e0b;outline-offset:-1px;':''}">
+      <td class="drag-handle" title="드래그하여 순서 변경">⠿</td>
+      <td><span style="font-family:monospace;font-size:.75rem;color:var(--accent)">${esc(c.id)}</span></td>
+      <td><span class="cell-txt" title="${esc(c.name)}">${esc(c.name)}</span></td>
+      <td><span class="badge ${c.type==='Positive'?'pos':'neg'}">${c.type}</span></td>
+      <td><span class="cell-txt" title="${esc(c.input)}">${esc(c.input)||'-'}</span></td>
+      <td><span class="cell-txt" title="${esc(c.expected)}">${esc(c.expected)||'-'}</span></td>
+      <td><span class="cell-txt" title="${esc(c.actual)}">${esc(c.actual)||'-'}</span></td>
+      <td><span class="badge ${c.pf==='Pass'?'pass':c.pf==='Fail'?'fail':'na'}">${c.pf||'-'}</span></td>
+      <td>${esc(c.owner)||'-'}</td>
+      <td style="white-space:nowrap">${c.date||'-'}</td>
+      <td><button class="btn-sm" style="background:#f59e0b;color:#fff;" onclick="mEdit(${i})">수정</button></td>
+      <td><button class="btn-sm del" onclick="mDel(${i})">삭제</button></td>
+    </tr>`).join('');
+  gv('m-id').placeholder=mNext();
+}
+
+function clearFilter(){
+  gv('f-search').value=''; gv('f-type').value=''; gv('f-pf').value='';
+  renderMgr();
+}
+
+/* ══ 드래그 앤 드롭 ══ */
+let dragSrcIdx=-1;
+function dragStart(e,i){ dragSrcIdx=i; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }
+function dragOver(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; e.currentTarget.closest('tr')?.classList.add('drag-over'); }
+function dragLeave(e){ e.currentTarget.closest('tr')?.classList.remove('drag-over'); }
+function dragDrop(e,targetIdx){
+  e.preventDefault();
+  e.currentTarget.closest('tr')?.classList.remove('drag-over');
+  if(dragSrcIdx<0||dragSrcIdx===targetIdx) return;
+  const arr=db.mgr.cases;
+  const [moved]=arr.splice(dragSrcIdx,1);
+  arr.splice(targetIdx,0,moved);
+  if(mEditIdx===dragSrcIdx) mEditIdx=targetIdx;
+  dragSrcIdx=-1; syncCases(); save(); renderMgr(); renderTst(); renderDep();
+}
+
+/* ══ 일괄 수행자·날짜 입력 ══ */
+function bulkApply(mode,scope){
+  const ownerEl=gv(`${mode==='tst'?'t':'d'}-bulk-owner`);
+  const dateEl=gv(`${mode==='tst'?'t':'d'}-bulk-date`);
+  const owner=ownerEl.value.trim(), date=dateEl.value;
+  if(!owner&&!date){ toast('수행자 또는 날짜를 입력하세요'); return; }
+  let count=0;
+  db[mode].cases.forEach(c=>{
+    if(scope==='empty'&&c.owner&&c.date) return;
+    if(owner){ if(scope==='all'||!c.owner) c.owner=owner; }
+    if(date){ if(scope==='all'||!c.date) c.date=date; }
+    count++;
+  });
+  save(); mode==='tst'?renderTst():renderDep();
+  toast(`${count}건 적용됐습니다 ✓`);
+}
+
+function bulkComplete(){
+  const cs=db.dep.cases;
+  if(!cs.length){ toast('항목이 없습니다'); return; }
+  if(!confirm(`배포 항목 ${cs.length}건을 모두 완료 처리하시겠습니까?`)) return;
+  cs.forEach(c=>c.pf='완료');
+  save(); renderDep();
+  toast(`${cs.length}건 완료 처리됐습니다 ✓`);
+}
+
+/* ══ JSON 백업/복원 ══ */
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  const dateStr=new Date().toISOString().split('T')[0].replace(/-/g,'');
+  const proj=db.tst.cover.project||db.dep.cover.project||'';
+  a.href=url; a.download=`QA데이터${proj?'_'+proj:''}_${dateStr}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('JSON 백업 완료 💾');
+}
+function importJSON(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const parsed=JSON.parse(e.target.result);
+      if(!parsed.mgr||!parsed.tst||!parsed.dep) throw new Error('형식 오류');
+      if(!confirm('현재 데이터를 덮어쓰고 불러오시겠습니까?')) return;
+      db=parsed; syncCases(); save(); applyForms(); renderAll();
+      toast('데이터를 불러왔습니다 ✓');
+    }catch(err){ toast('올바른 QA 백업 파일이 아닙니다'); }
+    input.value='';
+  };
+  reader.readAsText(file);
+}
+
+/* ══════════════════════
+   탭2: 테스트결과서 - 카테고리
+══════════════════════ */
+function addCat(mode){
+  const inp=gv(mode==='tst'?'t-newcat':'d-newcat');
+  const name=inp.value.trim(); if (!name) return;
+  const cols=mode==='tst'?TCOLS:DCOLS;
+  const arr=db[mode].cats;
+  arr.push({id:`${mode[0]}c${Date.now()}`,name,color:cols[arr.length%cols.length]});
+  inp.value=''; save(); mode==='tst'?renderTst():renderDep();
+}
+function delCat(mode,id){
+  db[mode].cats=db[mode].cats.filter(c=>c.id!==id);
+  db[mode].cases.forEach(c=>{if(c.catId===id)c.catId='';});
+  save(); mode==='tst'?renderTst():renderDep();
+}
+function renderCats(mode){
+  const cats=db[mode].cats;
+  const listEl=gv(mode==='tst'?'t-catlist':'d-catlist');
+  listEl.innerHTML=cats.length?cats.map(c=>`
+    <div class="cat-item">
+      <div class="cat-dot" style="background:${c.color}"></div>
+      <span>${esc(c.name)}</span>
+      <button class="btn-sm del" onclick="delCat('${mode}','${c.id}')">✕</button>
+    </div>`).join('')
+    :`<p style="font-size:.73rem;color:var(--muted);text-align:center;padding:5px 0;">카테고리를 추가하세요</p>`;
+}
+
+/* ══ 케이스 동기화 (케이스관리 → 테스트/배포) ══ */
+function syncCases(){
+  const mgrIds=new Set(db.mgr.cases.map(m=>m.id));
+  db.mgr.cases.forEach(mc=>{
+    if (!db.tst.cases.find(tc=>tc.id===mc.id))
+      db.tst.cases.push({id:mc.id, catId:'', actual:mc.actual||'', pf:mc.pf||'N/A', owner:mc.owner||'', date:mc.date||'', notes:'', evidence:[]});
+    if (!db.dep.cases.find(dc=>dc.id===mc.id))
+      db.dep.cases.push({id:mc.id, catId:'', actual:'', pf:'미완료', owner:'', date:'', notes:'', evidence:[]});
+  });
+  db.tst.cases=db.tst.cases.filter(tc=>mgrIds.has(tc.id));
+  db.dep.cases=db.dep.cases.filter(dc=>mgrIds.has(dc.id));
+}
+
+/* ══ 실행 결과 인라인 편집 ══ */
+function updateExec(mode,id,field,val){
+  const c=db[mode].cases.find(x=>x.id===id); if(!c) return;
+  c[field]=val; save();
+}
+function setPFExec(mode,id,pf,btn){
+  const c=db[mode].cases.find(x=>x.id===id); if(!c) return;
+  c.pf=pf; save();
+  btn.closest('.tc-pf-row').querySelectorAll('.pf-btn').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+  const hd=btn.closest('.tc');
+  if(hd){
+    const badge=hd.querySelector('.tc-hd .tc-badge:last-child');
+    if(badge){
+      badge.className='tc-badge '+((pf==='Pass'||pf==='완료')?'pass':(pf==='Fail'||pf==='미완료')?'fail':'skip');
+      badge.textContent=pf;
+    }
+  }
+}
+
+function renderTstList(){
+  const el=gv('t-caselist'); const cs=db.tst.cases;
+  gv('t-cnt').textContent=cs.length;
+  el.innerHTML=cs.length?cs.map(c=>{
+    const mc=db.mgr.cases.find(m=>m.id===c.id)||{name:c.id};
+    const p=c.pf==='Pass',f=c.pf==='Fail';
+    const col=p?'var(--pass)':f?'var(--fail)':'var(--warn)';
+    const bg=p?'rgba(34,197,94,.12)':f?'rgba(239,68,68,.12)':'rgba(245,158,11,.12)';
+    return `<div class="case-item"><span class="cid" style="color:var(--accent)">${esc(c.id)}</span><span class="cname">${esc(mc.name)}</span><span class="cpf" style="background:${bg};color:${col}">${c.pf}</span></div>`;
+  }).join(''):`<p style="font-size:.73rem;color:var(--muted);text-align:center;padding:5px 0;">케이스관리에서 케이스를 추가하세요</p>`;
+}
+
+function renderDepList(){
+  const el=gv('d-caselist'); const cs=db.dep.cases;
+  gv('d-cnt').textContent=cs.length;
+  el.innerHTML=cs.length?cs.map(c=>{
+    const mc=db.mgr.cases.find(m=>m.id===c.id)||{name:c.id};
+    const p=c.pf==='완료',f=c.pf==='미완료';
+    const col=p?'var(--pass)':f?'var(--fail)':'var(--warn)';
+    const bg=p?'rgba(34,197,94,.12)':f?'rgba(239,68,68,.12)':'rgba(245,158,11,.12)';
+    return `<div class="case-item"><span class="cid" style="color:var(--deploy)">${esc(c.id)}</span><span class="cname">${esc(mc.name)}</span><span class="cpf" style="background:${bg};color:${col}">${c.pf}</span></div>`;
+  }).join(''):`<p style="font-size:.73rem;color:var(--muted);text-align:center;padding:5px 0;">케이스관리에서 케이스를 추가하세요</p>`;
+}
+
+/* ══ 증적 ══ */
+function addEv(mode,cid,inp){
+  const c=db[mode].cases.find(x=>x.id===cid); if (!c) return;
+  Array.from(inp.files).forEach(f=>{const r=new FileReader();r.onload=e=>{c.evidence.push(e.target.result);save();mode==='tst'?renderTst():renderDep();};r.readAsDataURL(f);});
+}
+function delEv(mode,cid,i){
+  const c=db[mode].cases.find(x=>x.id===cid); if (!c) return;
+  c.evidence.splice(i,1); save(); mode==='tst'?renderTst():renderDep();
+}
+
+/* ══════════════════════
+   커버 동기화
+══════════════════════ */
+function syncTstCover(){
+  db.tst.cover={company:v('t-company'),project:v('t-project'),system:v('t-system'),version:v('t-ver'),
+    docNumber:v('t-docnum'),start:v('t-start'),end:v('t-end'),environment:v('t-env'),
+    author:v('t-author'),approver:v('t-approver'),date:v('t-date')};
+}
+function syncDepCover(){
+  db.dep.cover={company:v('d-company'),project:v('d-project'),version:v('d-ver'),environment:v('d-env'),
+    docNumber:v('d-docnum'),deployType:v('d-type'),start:v('d-start'),end:v('d-end'),
+    deployer:v('d-deployer'),approver:v('d-approver'),date:v('d-date'),
+    target:v('d-target'),summary:v('d-summary')};
+}
+
+/* ══════════════════════
+   리포트 렌더 - 테스트결과서
+══════════════════════ */
+function renderTst(){
+  syncTstCover(); save();
+  renderCats('tst'); renderTstList();
+  const c=db.tst.cover, cs=db.tst.cases;
+  const tot=cs.length, pass=cs.filter(x=>x.pf==='Pass').length, fail=cs.filter(x=>x.pf==='Fail').length, na=cs.filter(x=>x.pf==='N/A').length;
+  const rate=tot>0?Math.round((pass/tot)*100):0;
+  const fd=d=>d?d.replace(/-/g,'.'):'-';
+
+  const coverPage=`<div class="page"><div class="cover">
+    <div class="cover-top">
+      <div class="cv-icon tst">QA</div>
+      <div class="cv-badge tst">TEST EXECUTION REPORT</div>
+      <div class="cv-title">테스트 수행결과서</div>
+      <div class="cv-sub tst">${esc(c.project)||'&nbsp;'}</div>
+      <hr class="cv-line tst">
+    </div>
+    <div class="cv-info"><table class="cv-tbl">
+      <tr><td>시스템/서비스</td><td>${esc(c.system)||'-'}</td></tr>
+      <tr><td>버전</td><td>${esc(c.version)||'-'}</td></tr>
+      <tr><td>문서번호</td><td>${esc(c.docNumber)||'-'}</td></tr>
+      <tr><td>테스트 기간</td><td>${fd(c.start)} ~ ${fd(c.end)}</td></tr>
+      <tr><td>테스트 환경</td><td>${esc(c.environment)||'-'}</td></tr>
+      <tr><td>작성자</td><td>${esc(c.author)||'-'}</td></tr>
+      <tr><td>승인자</td><td>${esc(c.approver)||'-'}</td></tr>
+      <tr><td>작성일</td><td>${fd(c.date)}</td></tr>
+    </table></div>
+    <div class="cv-foot"><div class="cv-company">${esc(c.company)||'&nbsp;'}</div><div>본 문서는 내부용으로 무단 배포를 금합니다.</div></div>
+  </div><div class="pfoot"><span>${esc(c.company)||''}</span><span>테스트 수행결과서 · ${esc(c.docNumber)||''}</span><span>표지</span></div></div>`;
+
+  const sumPage=`<div class="page">
+    <div class="r-sec"><div class="r-title tst"><span class="r-num tst">1</span> 테스트 수행 개요</div>
+      <div class="sum-grid">
+        <div class="scard t1"><div class="sv">${tot}</div><div class="sl">전체 케이스</div></div>
+        <div class="scard t2"><div class="sv">${pass}</div><div class="sl">PASS</div></div>
+        <div class="scard t3"><div class="sv">${fail}</div><div class="sl">FAIL</div></div>
+        <div class="scard t4"><div class="sv">${rate}%</div><div class="sl">Pass Rate</div></div>
+      </div>
+      <div class="prog"><div class="prog-fill tst" style="width:${rate}%"></div></div>
+      <p style="text-align:right;font-size:7.5pt;color:#64748b;margin-top:2mm;">통과율 ${rate}% (${pass}/${tot})</p>
+    </div>
+    <div class="r-sec"><div class="r-title tst"><span class="r-num tst">2</span> 카테고리별 현황</div>
+      <table class="rtbl"><thead><tr><th>카테고리</th><th>전체</th><th>PASS</th><th>FAIL</th><th>N/A</th><th>통과율</th></tr></thead><tbody>
+      ${db.tst.cats.map(cat=>{const c2=cs.filter(x=>x.catId===cat.id);const p=c2.filter(x=>x.pf==='Pass').length,f=c2.filter(x=>x.pf==='Fail').length,n=c2.filter(x=>x.pf==='N/A').length;const r=c2.length?Math.round((p/c2.length)*100):0;
+        return`<tr><td><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${cat.color};margin-right:5px;"></span>${esc(cat.name)}</td><td>${c2.length}</td><td style="color:#16a34a;font-weight:700">${p}</td><td style="color:#dc2626;font-weight:700">${f}</td><td style="color:#92400e;font-weight:700">${n}</td><td>${r}%</td></tr>`;}).join('')}
+      <tr style="font-weight:800;background:#f0f4ff"><td>합계</td><td>${tot}</td><td style="color:#16a34a">${pass}</td><td style="color:#dc2626">${fail}</td><td style="color:#92400e">${na}</td><td>${rate}%</td></tr>
+      </tbody></table>
+    </div>
+    <div class="pfoot"><span>${esc(c.company)||''}</span><span>테스트 수행결과서 · ${esc(c.docNumber)||''}</span><span>2</span></div>
+  </div>`;
+
+  const rcats=[...db.tst.cats];
+  if (cs.filter(x=>!x.catId).length) rcats.push({id:'__u__',name:'미분류',color:'#94a3b8'});
+  const casePages=rcats.map((cat,ci)=>{
+    const c2=cat.id==='__u__'?cs.filter(x=>!x.catId):cs.filter(x=>x.catId===cat.id);
+    if (!c2.length) return '';
+    const p=c2.filter(x=>x.pf==='Pass').length,f=c2.filter(x=>x.pf==='Fail').length;
+    return `<div class="page"><div class="r-sec">
+      <div class="r-title tst"><span class="r-num tst">${3+ci}</span> 테스트 수행 결과 <span style="font-size:9pt;color:#4f8cff;font-weight:600">— ${esc(cat.name)}</span></div>
+      <div class="cat-hdr tst"><span class="cat-name tst">${esc(cat.name)}</span><div class="cstats"><span class="cst t">총 ${c2.length}</span><span class="cst p">PASS ${p}</span><span class="cst f">FAIL ${f}</span></div></div>
+      ${c2.map(tc=>tcCard(tc,'tst')).join('')}
+    </div><div class="pfoot"><span>${esc(c.company)||''}</span><span>테스트 수행결과서 · ${esc(c.docNumber)||''}</span><span>${3+ci}</span></div></div>`;
+  }).join('');
+
+  const fails=cs.filter(x=>x.pf==='Fail');
+  const failPage=fails.length?`<div class="page"><div class="r-sec">
+    <div class="r-title tst"><span class="r-num tst">!</span> FAIL 케이스 목록</div>
+    <table class="rtbl"><thead><tr><th>ID</th><th>카테고리</th><th>테스트케이스명</th><th>기대 결과</th><th>실제 결과</th><th>수행자</th><th>수행일자</th></tr></thead><tbody>
+    ${fails.map(tc=>{const cat=db.tst.cats.find(x=>x.id===tc.catId);const mc=db.mgr.cases.find(m=>m.id===tc.id)||{};return`<tr><td style="font-family:monospace;color:#dc2626;font-weight:700">${esc(tc.id)}</td><td>${cat?esc(cat.name):'-'}</td><td>${esc(mc.name||tc.id)}</td><td>${esc(mc.expected)||'-'}</td><td>${esc(tc.actual)||'-'}</td><td>${esc(tc.owner)||'-'}</td><td>${tc.date||'-'}</td></tr>`;}).join('')}
+    </tbody></table>
+  </div><div class="pfoot"><span>${esc(c.company)||''}</span><span>테스트 수행결과서</span><span>FAIL 목록</span></div></div>`:'';
+
+  gv('t-preview').innerHTML=coverPage+sumPage+casePages+failPage;
+}
+
+/* ══════════════════════
+   리포트 렌더 - 배포결과서
+══════════════════════ */
+function renderDep(){
+  syncDepCover(); save();
+  renderCats('dep'); renderDepList();
+  const c=db.dep.cover, cs=db.dep.cases;
+  const tot=cs.length, done=cs.filter(x=>x.pf==='완료').length, fail=cs.filter(x=>x.pf==='미완료').length, skip=cs.filter(x=>x.pf==='스킵').length;
+  const rate=tot>0?Math.round((done/tot)*100):0;
+  const fd=d=>d?d.replace(/-/g,'.'):'-';
+  const fdt=s=>s?s.replace('T',' ').substring(0,16):'-';
+  const envCls={Production:'prod',Staging:'staging',Development:'dev'}[c.environment]||'';
+
+  const coverPage=`<div class="page"><div class="cover">
+    <div class="cover-top">
+      <div class="cv-icon dep">🚀</div>
+      <div class="cv-badge dep">DEPLOYMENT RESULT REPORT</div>
+      <div class="cv-title">배포 결과서</div>
+      <div class="cv-sub dep">${esc(c.project)||'&nbsp;'}</div>
+      <hr class="cv-line dep">
+    </div>
+    <div class="cv-info"><table class="cv-tbl">
+      <tr><td>배포 버전</td><td><strong>${esc(c.version)||'-'}</strong></td></tr>
+      <tr><td>배포 환경</td><td><span class="env-badge ${envCls}">${esc(c.environment)||'-'}</span></td></tr>
+      <tr><td>배포 유형</td><td>${esc(c.deployType)||'-'}</td></tr>
+      <tr><td>문서번호</td><td>${esc(c.docNumber)||'-'}</td></tr>
+      <tr><td>배포 시작</td><td>${fdt(c.start)}</td></tr>
+      <tr><td>배포 완료</td><td>${fdt(c.end)}</td></tr>
+      <tr><td>대상 서버</td><td>${esc(c.target)||'-'}</td></tr>
+      <tr><td>배포자</td><td>${esc(c.deployer)||'-'}</td></tr>
+      <tr><td>승인자</td><td>${esc(c.approver)||'-'}</td></tr>
+      <tr><td>작성일</td><td>${fd(c.date)}</td></tr>
+    </table></div>
+    <div class="cv-foot"><div class="cv-company">${esc(c.company)||'&nbsp;'}</div><div>본 문서는 내부용으로 무단 배포를 금합니다.</div></div>
+  </div><div class="pfoot"><span>${esc(c.company)||''}</span><span>배포 결과서 · ${esc(c.docNumber)||''}</span><span>표지</span></div></div>`;
+
+  const sumPage=`<div class="page">
+    <div class="r-sec"><div class="r-title dep"><span class="r-num dep">1</span> 배포 개요</div>
+      <div class="dep-box">
+        <div class="dep-row">
+          <div class="dbi"><span class="dl">배포 버전</span><span class="dv">${esc(c.version)||'-'}</span></div>
+          <div class="dbi"><span class="dl">배포 환경</span><span class="dv"><span class="env-badge ${envCls}">${esc(c.environment)||'-'}</span></span></div>
+          <div class="dbi"><span class="dl">배포 유형</span><span class="dv">${esc(c.deployType)||'-'}</span></div>
+          <div class="dbi"><span class="dl">배포자</span><span class="dv">${esc(c.deployer)||'-'}</span></div>
+        </div>
+        ${c.summary?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid #bae6fd;font-size:8.5pt;color:#1e293b;"><strong style="color:#0284c7">배포 내용:</strong> ${esc(c.summary)}</div>`:''}
+      </div>
+    </div>
+    <div class="r-sec"><div class="r-title dep"><span class="r-num dep">2</span> 수행 결과 요약</div>
+      <div class="sum-grid">
+        <div class="scard d1"><div class="sv">${tot}</div><div class="sl">전체 항목</div></div>
+        <div class="scard t2"><div class="sv">${done}</div><div class="sl">완료</div></div>
+        <div class="scard t3"><div class="sv">${fail}</div><div class="sl">미완료</div></div>
+        <div class="scard t4"><div class="sv">${rate}%</div><div class="sl">완료율</div></div>
+      </div>
+      <div class="prog"><div class="prog-fill dep" style="width:${rate}%"></div></div>
+      <p style="text-align:right;font-size:7.5pt;color:#64748b;margin-top:2mm;">완료율 ${rate}% (${done}/${tot})</p>
+    </div>
+    <div class="r-sec"><div class="r-title dep"><span class="r-num dep">3</span> 카테고리별 현황</div>
+      <table class="rtbl"><thead><tr><th>카테고리</th><th>전체</th><th>완료</th><th>미완료</th><th>스킵</th><th>완료율</th></tr></thead><tbody>
+      ${db.dep.cats.map(cat=>{const c2=cs.filter(x=>x.catId===cat.id);const d=c2.filter(x=>x.pf==='완료').length,f=c2.filter(x=>x.pf==='미완료').length,s=c2.filter(x=>x.pf==='스킵').length;const r=c2.length?Math.round((d/c2.length)*100):0;
+        return`<tr><td><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${cat.color};margin-right:5px;"></span>${esc(cat.name)}</td><td>${c2.length}</td><td style="color:#16a34a;font-weight:700">${d}</td><td style="color:#dc2626;font-weight:700">${f}</td><td style="color:#92400e;font-weight:700">${s}</td><td>${r}%</td></tr>`;}).join('')}
+      <tr style="font-weight:800;background:#f0f9ff"><td>합계</td><td>${tot}</td><td style="color:#16a34a">${done}</td><td style="color:#dc2626">${fail}</td><td style="color:#92400e">${skip}</td><td>${rate}%</td></tr>
+      </tbody></table>
+    </div>
+    <div class="pfoot"><span>${esc(c.company)||''}</span><span>배포 결과서 · ${esc(c.docNumber)||''}</span><span>2</span></div>
+  </div>`;
+
+  const dcats=[...db.dep.cats];
+  if (cs.filter(x=>!x.catId).length) dcats.push({id:'__u__',name:'미분류',color:'#94a3b8'});
+  const casePages=dcats.map((cat,ci)=>{
+    const c2=cat.id==='__u__'?cs.filter(x=>!x.catId):cs.filter(x=>x.catId===cat.id);
+    if (!c2.length) return '';
+    const d=c2.filter(x=>x.pf==='완료').length,f=c2.filter(x=>x.pf==='미완료').length;
+    return `<div class="page"><div class="r-sec">
+      <div class="r-title dep"><span class="r-num dep">${4+ci}</span> 배포 수행 결과 <span style="font-size:9pt;color:#0ea5e9;font-weight:600">— ${esc(cat.name)}</span></div>
+      <div class="cat-hdr dep"><span class="cat-name dep">${esc(cat.name)}</span><div class="cstats"><span class="cst td">총 ${c2.length}</span><span class="cst p">완료 ${d}</span><span class="cst f">미완료 ${f}</span></div></div>
+      ${c2.map(tc=>tcCard(tc,'dep')).join('')}
+    </div><div class="pfoot"><span>${esc(c.company)||''}</span><span>배포 결과서 · ${esc(c.docNumber)||''}</span><span>${4+ci}</span></div></div>`;
+  }).join('');
+
+  const dfails=cs.filter(x=>x.pf==='미완료');
+  const failPage=dfails.length?`<div class="page"><div class="r-sec">
+    <div class="r-title dep"><span class="r-num dep">!</span> 미완료 항목 목록</div>
+    <table class="rtbl"><thead><tr><th>ID</th><th>카테고리</th><th>항목명</th><th>확인 기준</th><th>확인 결과</th><th>수행자</th><th>비고</th></tr></thead><tbody>
+    ${dfails.map(tc=>{const cat=db.dep.cats.find(x=>x.id===tc.catId);const mc=db.mgr.cases.find(m=>m.id===tc.id)||{};return`<tr><td style="font-family:monospace;color:#dc2626;font-weight:700">${esc(tc.id)}</td><td>${cat?esc(cat.name):'-'}</td><td>${esc(mc.name||tc.id)}</td><td>${esc(mc.expected)||'-'}</td><td>${esc(tc.actual)||'-'}</td><td>${esc(tc.owner)||'-'}</td><td>${esc(tc.notes)||'-'}</td></tr>`;}).join('')}
+    </tbody></table>
+  </div><div class="pfoot"><span>${esc(c.company)||''}</span><span>배포 결과서</span><span>미완료 목록</span></div></div>`:'';
+
+  gv('d-preview').innerHTML=coverPage+sumPage+casePages+failPage;
+}
+
+/* ══ 케이스 카드 공통 ══ */
+function tcCard(tc,mode){
+  const mc=db.mgr.cases.find(m=>m.id===tc.id)||{};
+  const name=mc.name||tc.id;
+  const pf=tc.pf||(mode==='tst'?'N/A':'미완료');
+  const pfCls=(pf==='Pass'||pf==='완료')?'pass':(pf==='Fail'||pf==='미완료')?'fail':'skip';
+  const typeBadge=mc.type?`<span class="tc-badge ${mc.type==='Positive'?'pos':'neg'}">${mc.type}</span>`:'';
+  const catOpts=db[mode].cats.map(c=>`<option value="${c.id}"${tc.catId===c.id?' selected':''}>${esc(c.name)}</option>`).join('');
+  const pfOpts=mode==='tst'
+    ?[['Pass','pass','PASS'],['Fail','fail','FAIL'],['N/A','na','N/A']]
+    :[['완료','pass','완료'],['미완료','fail','미완료'],['스킵','na','스킵']];
+  const pfBtns=pfOpts.map(([val,cls,lbl])=>`<button class="pf-btn ${cls}${pf===val?' on':''}" onclick="setPFExec('${mode}','${esc(tc.id)}','${val}',this)">${lbl}</button>`).join('');
+  const evHtml=`<div class="ev-area"><div class="ev-label">📷 증적 사진</div><div class="ev-photos">
+    ${(tc.evidence||[]).map((s,i)=>`<div style="position:relative;display:inline-block;"><img src="${s}"><button onclick="delEv('${mode}','${esc(tc.id)}',${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,.65);color:#fff;border:none;border-radius:50%;width:16px;height:16px;cursor:pointer;font-size:9px;line-height:1;">✕</button></div>`).join('')}
+    <label class="ev-add"><input type="file" accept="image/*" multiple style="display:none;" onchange="addEv('${mode}','${esc(tc.id)}',this)"><span style="font-size:1.1rem">📎</span><span>사진 추가</span></label>
+  </div></div>`;
+  return `<div class="tc"><div class="tc-hd">
+    <span class="tc-id ${mode}">${esc(tc.id)}</span>
+    <span class="tc-name">${esc(name)}</span>
+    ${typeBadge}<span class="tc-badge ${pfCls}">${pf}</span>
+  </div><div class="tc-bd">
+    ${mc.input?`<div class="tc-row"><span class="l">입력값</span><span class="v">${esc(mc.input)}</span></div>`:''}
+    <div class="tc-row"><span class="l">${mode==='tst'?'기대 결과':'확인 기준'}</span><span class="v">${esc(mc.expected)||'-'}</span></div>
+  </div>
+  <div class="tc-exec">
+    <div><div class="tc-exec-label">${mode==='tst'?'실제 결과':'확인 결과'}</div>
+      <textarea class="tc-efield" rows="2" onchange="updateExec('${mode}','${esc(tc.id)}','actual',this.value)">${esc(tc.actual||'')}</textarea>
+    </div>
+    <div><div class="tc-exec-label">결과</div><div class="tc-pf-row">${pfBtns}</div></div>
+    <div class="tc-ef2">
+      <div><div class="tc-exec-label">수행자</div><input class="tc-efield" value="${esc(tc.owner||'')}" placeholder="이름" onchange="updateExec('${mode}','${esc(tc.id)}','owner',this.value)"></div>
+      <div><div class="tc-exec-label">수행일자</div><input class="tc-efield" type="date" value="${tc.date||''}" onchange="updateExec('${mode}','${esc(tc.id)}','date',this.value)"></div>
+    </div>
+    <div><div class="tc-exec-label">비고</div><input class="tc-efield" value="${esc(tc.notes||'')}" placeholder="특이사항" onchange="updateExec('${mode}','${esc(tc.id)}','notes',this.value)"></div>
+    <div class="tc-cat-row"><div class="tc-exec-label" style="white-space:nowrap">카테고리</div>
+      <select onchange="updateExec('${mode}','${esc(tc.id)}','catId',this.value);${mode==='tst'?'renderTst()':'renderDep()'}">
+        <option value="">-- 미분류 --</option>${catOpts}
+      </select>
+    </div>
+  </div>${evHtml}</div>`;
+}
+
+/* ══════════════════════
+   엑셀 다운로드 (ExcelJS - 이미지 포함)
+══════════════════════ */
+async function exportExcel(){
+  toast('엑셀 생성 중... 잠시만 기다려주세요');
+  const wb = new ExcelJS.Workbook();
+  const tc=db.tst.cover, dc=db.dep.cover;
+  const mcs=db.mgr.cases, tcs=db.tst.cases, dcs=db.dep.cases;
+
+  const HDR_FILL = { type:'pattern', pattern:'solid', fgColor:{argb:'FF2D3248'} };
+  const HDR_FONT = { name:'맑은 고딕', bold:true, color:{argb:'FFE2E8F0'}, size:9 };
+  const HDR_BORDER_BOTTOM = { style:'medium', color:{argb:'FF4F8CFF'} };
+  const THIN = { style:'thin', color:{argb:'FFD0D5E0'} };
+  const thinBorder = { top:THIN, left:THIN, bottom:THIN, right:THIN };
+
+  function applyHdr(row, accentColor='FF4F8CFF'){
+    row.eachCell(c=>{
+      c.fill=HDR_FILL; c.font=HDR_FONT;
+      c.alignment={horizontal:'center',vertical:'middle'};
+      c.border={top:THIN,left:THIN,right:THIN,bottom:{style:'medium',color:{argb:accentColor}}};
+    });
+    row.height=22;
+  }
+  function pfFill(pf){
+    if(pf==='Pass'||pf==='완료') return {type:'pattern',pattern:'solid',fgColor:{argb:'FFF0FDF4'}};
+    if(pf==='Fail'||pf==='미완료') return {type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF1F2'}};
+    return {type:'pattern',pattern:'solid',fgColor:{argb:'FFFEF3C7'}};
+  }
+  function pfFont(pf){
+    if(pf==='Pass'||pf==='완료') return {name:'맑은 고딕',size:9,bold:true,color:{argb:'FF16A34A'}};
+    if(pf==='Fail'||pf==='미완료') return {name:'맑은 고딕',size:9,bold:true,color:{argb:'FFDC2626'}};
+    return {name:'맑은 고딕',size:9,bold:true,color:{argb:'FF92400E'}};
+  }
+  function dataCell(cell, value, rowIdx){
+    cell.value = value;
+    cell.font = {name:'맑은 고딕',size:9};
+    cell.fill = {type:'pattern',pattern:'solid',fgColor:{argb: rowIdx%2===0?'FFF8FAFF':'FFFFFFFF'}};
+    cell.alignment = {horizontal:'left',vertical:'middle',wrapText:true};
+    cell.border = thinBorder;
+  }
+  function titleRow(ws, text, colCount, argb){
+    ws.mergeCells(1,1,1,colCount);
+    const r=ws.getRow(1);
+    r.getCell(1).value=text;
+    r.getCell(1).font={name:'맑은 고딕',bold:true,size:13,color:{argb:'FFFFFFFF'}};
+    r.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb}};
+    r.getCell(1).alignment={horizontal:'center',vertical:'middle'};
+    r.height=32;
+  }
+
+  /* ── 시트1: 케이스관리 ── */
+  const ws1 = wb.addWorksheet('케이스관리');
+  ws1.views=[{state:'frozen',ySplit:2}];
+  ws1.columns=[
+    {key:'a',width:14},{key:'b',width:32},{key:'c',width:10},{key:'d',width:22},
+    {key:'e',width:26},{key:'f',width:9},{key:'g',width:10},{key:'h',width:12}
+  ];
+  titleRow(ws1,'케이스 관리',8,'FF2D3248');
+  const mh=ws1.addRow(['테스트 케이스 ID','테스트 항목명','구분','입력값','기대 결과','Pass/Fail','담당자','수행일자']);
+  applyHdr(mh,'FF4F8CFF');
+  mcs.forEach((c,i)=>{
+    const r=ws1.addRow([c.id,c.name,c.type,c.input||'',c.expected,c.pf,c.owner,c.date]);
+    r.eachCell((cell,ci)=>{
+      dataCell(cell,cell.value,i);
+      if(ci===6){cell.fill=pfFill(c.pf);cell.font=pfFont(c.pf);}
+      if(ci===3){cell.font={name:'맑은 고딕',size:9,bold:true,color:{argb:c.type==='Positive'?'FF1D4ED8':'FFC2410C'}};}
+    });
+    r.height=18;
+  });
+  const tot0=mcs.length,p0=mcs.filter(x=>x.pf==='Pass').length,f0=mcs.filter(x=>x.pf==='Fail').length;
+  ws1.mergeCells(mcs.length+3,1,mcs.length+3,8);
+  const sumR0=ws1.getRow(mcs.length+3);
+  sumR0.getCell(1).value=`전체: ${tot0}건    PASS: ${p0}건    FAIL: ${f0}건    통과율: ${tot0?Math.round(p0/tot0*100):0}%`;
+  sumR0.getCell(1).font={name:'맑은 고딕',bold:true,size:10,color:{argb:'FF1D4ED8'}};
+  sumR0.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFEEF2FF'}};
+  sumR0.getCell(1).alignment={horizontal:'center',vertical:'middle'};
+  sumR0.getCell(1).border=thinBorder; sumR0.height=22;
+
+  /* ── 시트2: 테스트_표지 ── */
+  const ws2=wb.addWorksheet('테스트_표지');
+  ws2.columns=[{key:'a',width:18},{key:'b',width:44}];
+  ws2.mergeCells(1,1,1,2);
+  const ct=ws2.getRow(1);
+  ct.getCell(1).value='QA 테스트 수행결과서';
+  ct.getCell(1).font={name:'맑은 고딕',bold:true,size:16,color:{argb:'FFFFFFFF'}};
+  ct.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF4F8CFF'}};
+  ct.getCell(1).alignment={horizontal:'center',vertical:'middle'};
+  ct.height=38;
+  const tcover=[
+    ['프로젝트명',tc.project],['시스템명',tc.system],['버전',tc.version],
+    ['문서번호',tc.docNumber],['테스트 시작일',tc.start],['테스트 종료일',tc.end],
+    ['테스트 환경',tc.environment],['작성자',tc.author],['승인자',tc.approver],
+    ['작성일',tc.date],['회사/부서',tc.company]
+  ];
+  tcover.forEach(([k,val])=>{
+    const r=ws2.addRow([k,val]);
+    r.getCell(1).font={name:'맑은 고딕',bold:true,size:10,color:{argb:'FF475569'}};
+    r.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8FAFC'}};
+    r.getCell(1).border=thinBorder; r.getCell(1).alignment={vertical:'middle'};
+    r.getCell(2).font={name:'맑은 고딕',size:10,color:{argb:'FF0F172A'}};
+    r.getCell(2).border=thinBorder; r.getCell(2).alignment={vertical:'middle',wrapText:true};
+    r.height=22;
+  });
+
+  /* ── 시트3: 테스트_요약 (카테고리현황 + FAIL목록 + 결과요약) ── */
+  const ws3=wb.addWorksheet('테스트_요약');
+  ws3.columns=[
+    {key:'a',width:22},{key:'b',width:12},{key:'c',width:12},{key:'d',width:12},{key:'e',width:12},{key:'f',width:12},{key:'g',width:10}
+  ];
+  // 결과 요약 섹션
+  titleRow(ws3,'테스트 결과 요약',7,'FF4F8CFF');
+  const tMerged=tcs.map(tc2=>{const mc2=mcs.find(m=>m.id===tc2.id)||{};return{...mc2,...tc2};});
+  const tot=tMerged.length, pass=tMerged.filter(x=>x.pf==='Pass').length, fail=tMerged.filter(x=>x.pf==='Fail').length, na=tMerged.filter(x=>x.pf==='N/A').length;
+  const posCount=mcs.filter(x=>x.type==='Positive').length, negCount=mcs.filter(x=>x.type==='Negative').length;
+  const rate=tot?Math.round(pass/tot*100):0;
+
+  const sr1=ws3.addRow(['구분','전체','PASS','FAIL','N/A','통과율','']);
+  applyHdr(sr1,'FF4F8CFF'); sr1.height=20;
+  const sr2=ws3.addRow(['테스트 결과',tot,pass,fail,na,`${rate}%`,'']);
+  sr2.eachCell((cell,ci)=>{ dataCell(cell,cell.value,0);
+    if(ci===3){cell.font=pfFont('Pass');}
+    if(ci===4){cell.font=pfFont('Fail');}
+  }); sr2.height=20;
+
+  ws3.addRow([]);
+  const pnHdr=ws3.addRow(['구분','Positive','Negative','','','','']);
+  applyHdr(pnHdr,'FF4F8CFF'); pnHdr.height=20;
+  const pnRow=ws3.addRow(['케이스 유형 현황',posCount,negCount,'','','','']);
+  pnRow.eachCell((cell,ci)=>{dataCell(cell,cell.value,0);
+    if(ci===2){cell.font={name:'맑은 고딕',size:9,bold:true,color:{argb:'FF1D4ED8'}};}
+    if(ci===3){cell.font={name:'맑은 고딕',size:9,bold:true,color:{argb:'FFC2410C'}};}
+  }); pnRow.height=20;
+
+  // 카테고리별 현황
+  ws3.addRow([]);
+  let r3=ws3.lastRow.number+1;
+  ws3.mergeCells(r3,1,r3,7);
+  const catTitleR=ws3.getRow(r3);
+  catTitleR.getCell(1).value='카테고리별 현황';
+  catTitleR.getCell(1).font={name:'맑은 고딕',bold:true,size:11,color:{argb:'FFFFFFFF'}};
+  catTitleR.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF4F8CFF'}};
+  catTitleR.getCell(1).alignment={horizontal:'center',vertical:'middle'};
+  catTitleR.height=24;
+  const catHdrR=ws3.addRow(['카테고리','전체','PASS','FAIL','N/A','통과율','']);
+  applyHdr(catHdrR,'FF4F8CFF');
+  db.tst.cats.forEach((cat,ci)=>{
+    const c2=tMerged.filter(x=>x.catId===cat.id);
+    const p2=c2.filter(x=>x.pf==='Pass').length,f2=c2.filter(x=>x.pf==='Fail').length,n2=c2.filter(x=>x.pf==='N/A').length;
+    const r2=c2.length?Math.round(p2/c2.length*100):0;
+    const row=ws3.addRow([cat.name,c2.length,p2,f2,n2,`${r2}%`,'']);
+    row.eachCell((cell,idx)=>{dataCell(cell,cell.value,ci);
+      if(idx===3){cell.font=pfFont('Pass');} if(idx===4){cell.font=pfFont('Fail');}
+    }); row.height=18;
+  });
+  // 미분류
+  const unc=tMerged.filter(x=>!x.catId);
+  if(unc.length){
+    const up=unc.filter(x=>x.pf==='Pass').length,uf=unc.filter(x=>x.pf==='Fail').length,un=unc.filter(x=>x.pf==='N/A').length;
+    const ur=unc.length?Math.round(up/unc.length*100):0;
+    const urow=ws3.addRow(['미분류',unc.length,up,uf,un,`${ur}%`,'']);
+    urow.eachCell((cell,idx)=>{dataCell(cell,cell.value,99);
+      if(idx===3){cell.font=pfFont('Pass');} if(idx===4){cell.font=pfFont('Fail');}
+    }); urow.height=18;
+  }
+
+  // FAIL 케이스 목록
+  const failList=tMerged.filter(x=>x.pf==='Fail');
+  if(failList.length){
+    ws3.addRow([]);
+    let rF=ws3.lastRow.number+1;
+    ws3.mergeCells(rF,1,rF,7);
+    const fTitleR=ws3.getRow(rF);
+    fTitleR.getCell(1).value=`FAIL 케이스 목록 (${failList.length}건)`;
+    fTitleR.getCell(1).font={name:'맑은 고딕',bold:true,size:11,color:{argb:'FFFFFFFF'}};
+    fTitleR.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFDC2626'}};
+    fTitleR.getCell(1).alignment={horizontal:'center',vertical:'middle'};
+    fTitleR.height=24;
+    const fHdr=ws3.addRow(['케이스 ID','케이스명','구분','입력값','기대 결과','실제 결과','수행자']);
+    applyHdr(fHdr,'FFDC2626');
+    failList.forEach((c,i)=>{
+      const cat=db.tst.cats.find(x=>x.id===c.catId);
+      const row=ws3.addRow([c.id,c.name||c.id,c.type||'',c.input||'',c.expected||'',c.actual||'',c.owner||'']);
+      row.eachCell((cell,ci)=>{dataCell(cell,cell.value,i);
+        if(ci===1){cell.font={name:'맑은 고딕',size:9,bold:true,color:{argb:'FFDC2626'}};}
+      }); row.height=18;
+    });
+  }
+
+  /* ── 시트4: 테스트_수행결과 ── */
+  const ws4=wb.addWorksheet('테스트_수행결과');
+  ws4.views=[{state:'frozen',ySplit:2}];
+  ws4.columns=[
+    {key:'a',width:16},{key:'b',width:13},{key:'c',width:30},{key:'d',width:10},
+    {key:'e',width:22},{key:'f',width:26},{key:'g',width:26},{key:'h',width:9},
+    {key:'i',width:10},{key:'j',width:12},{key:'k',width:20},{key:'l',width:28}
+  ];
+  titleRow(ws4,'테스트 수행 결과',12,'FF4F8CFF');
+  const th4=ws4.addRow(['카테고리','테스트 케이스 ID','테스트케이스명','구분','입력값','기대 결과','실제 결과','Pass/Fail','수행자','수행일자','비고','증적']);
+  applyHdr(th4,'FF4F8CFF');
+  // 증적 헤더 강조
+  th4.getCell(12).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF7C3AED'}};
+  th4.getCell(12).font={name:'맑은 고딕',bold:true,size:9,color:{argb:'FFFFFFFF'}};
+  tMerged.forEach((c,i)=>{
+    const cat=db.tst.cats.find(x=>x.id===c.catId);
+    const r=ws4.addRow([cat?cat.name:'미분류',c.id,c.name||c.id,c.type||'',c.input||'',c.expected||'',c.actual||'',c.pf||'',c.owner||'',c.date||'',c.notes||'','']);
+    r.eachCell((cell,ci)=>{
+      dataCell(cell,cell.value,i);
+      if(ci===8){cell.fill=pfFill(c.pf);cell.font=pfFont(c.pf);}
+      if(ci===4){cell.font={name:'맑은 고딕',size:9,bold:true,color:{argb:c.type==='Positive'?'FF1D4ED8':'FFC2410C'}};}
+      if(ci===12){cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F3FF'}};cell.border=thinBorder;}
+    });
+    r.height=80;
+  });
+  const tsumRow=ws4.lastRow.number+2;
+  ws4.mergeCells(tsumRow,1,tsumRow,12);
+  const tsr=ws4.getRow(tsumRow);
+  tsr.getCell(1).value=`전체: ${tot}건    PASS: ${pass}건    FAIL: ${fail}건    통과율: ${rate}%`;
+  tsr.getCell(1).font={name:'맑은 고딕',bold:true,size:10,color:{argb:'FF1D4ED8'}};
+  tsr.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFEEF2FF'}};
+  tsr.getCell(1).alignment={horizontal:'center',vertical:'middle'};
+  tsr.getCell(1).border=thinBorder; tsr.height=22;
+
+  /* ── 시트5: 배포_표지 ── */
+  const ws5=wb.addWorksheet('배포_표지');
+  ws5.columns=[{key:'a',width:18},{key:'b',width:52}];
+  ws5.mergeCells(1,1,1,2);
+  const cd=ws5.getRow(1);
+  cd.getCell(1).value='배포 결과서';
+  cd.getCell(1).font={name:'맑은 고딕',bold:true,size:16,color:{argb:'FFFFFFFF'}};
+  cd.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0EA5E9'}};
+  cd.getCell(1).alignment={horizontal:'center',vertical:'middle'};
+  cd.height=38;
+  const dcover=[
+    ['프로젝트명',dc.project],['배포 버전',dc.version],['배포 환경',dc.environment],
+    ['배포 유형',dc.deployType],['문서번호',dc.docNumber],
+    ['배포 시작',dc.start],['배포 완료',dc.end],['대상 서버',dc.target],
+    ['배포자',dc.deployer],['승인자',dc.approver],['작성일',dc.date],
+    ['배포 내용 요약',dc.summary],['회사/부서',dc.company]
+  ];
+  dcover.forEach(([k,val])=>{
+    const r=ws5.addRow([k,val]);
+    r.getCell(1).font={name:'맑은 고딕',bold:true,size:10,color:{argb:'FF475569'}};
+    r.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF0F9FF'}};
+    r.getCell(1).border=thinBorder; r.getCell(1).alignment={vertical:'middle'};
+    r.getCell(2).font={name:'맑은 고딕',size:10,color:{argb:'FF0F172A'}};
+    r.getCell(2).border=thinBorder; r.getCell(2).alignment={vertical:'middle',wrapText:true};
+    r.height=22;
+  });
+
+  /* ── 시트6: 배포_수행결과 ── */
+  const ws6=wb.addWorksheet('배포_수행결과');
+  ws6.views=[{state:'frozen',ySplit:2}];
+  ws6.columns=[
+    {key:'a',width:20},{key:'b',width:10},{key:'c',width:30},{key:'d',width:22},
+    {key:'e',width:26},{key:'f',width:26},{key:'g',width:9},{key:'h',width:10},{key:'i',width:18},{key:'j',width:16},{key:'k',width:28}
+  ];
+  titleRow(ws6,'배포 수행 결과',11,'FF0EA5E9');
+  const th6=ws6.addRow(['카테고리','항목 ID','확인 항목명','입력값','확인 기준','확인 결과','결과','수행자','수행일시','비고','증적']);
+  applyHdr(th6,'FF0EA5E9');
+  th6.getCell(11).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF7C3AED'}};
+  th6.getCell(11).font={name:'맑은 고딕',bold:true,size:9,color:{argb:'FFFFFFFF'}};
+  const dMerged=dcs.map(dc2=>{const mc2=mcs.find(m=>m.id===dc2.id)||{};return{...mc2,...dc2};});
+  dMerged.forEach((c,i)=>{
+    const cat=db.dep.cats.find(x=>x.id===c.catId);
+    const r=ws6.addRow([cat?cat.name:'미분류',c.id,c.name||c.id,c.input||'',c.expected||'',c.actual||'',c.pf||'',c.owner||'',c.date||'',c.notes||'','']);
+    r.eachCell((cell,ci)=>{
+      dataCell(cell,cell.value,i);
+      if(ci===7){cell.fill=pfFill(c.pf);cell.font=pfFont(c.pf);}
+      if(ci===11){cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF5F3FF'}};cell.border=thinBorder;}
+    });
+    r.height=80;
+  });
+  const dtot=dMerged.length,ddone=dMerged.filter(x=>x.pf==='완료').length,dfail=dMerged.filter(x=>x.pf==='미완료').length;
+  const dsumRow=ws6.lastRow.number+2;
+  ws6.mergeCells(dsumRow,1,dsumRow,11);
+  const dsr=ws6.getRow(dsumRow);
+  dsr.getCell(1).value=`전체: ${dtot}건    완료: ${ddone}건    미완료: ${dfail}건    완료율: ${dtot?Math.round(ddone/dtot*100):0}%`;
+  dsr.getCell(1).font={name:'맑은 고딕',bold:true,size:10,color:{argb:'FF0284C7'}};
+  dsr.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE0F2FE'}};
+  dsr.getCell(1).alignment={horizontal:'center',vertical:'middle'};
+  dsr.getCell(1).border=thinBorder; dsr.height=22;
+
+  /* ── 다운로드 ── */
+  const buf = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buf], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr=new Date().toISOString().split('T')[0].replace(/-/g,'');
+  const proj=tc.project||dc.project||'';
+  a.href=url; a.download=`QA결과보고서${proj?'_'+proj:''}_${dateStr}.xlsx`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('엑셀 다운로드 완료 📥');
+}
+
+/* ══ 유틸 ══ */
+function renderAll(){ syncCases(); renderMgr(); renderTst(); renderDep(); }
+function v(id){ return gv(id).value.trim(); }
+function gv(id){ return document.getElementById(id); }
+function esc(s){ if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg){ const t=gv('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+
+window.addEventListener('beforeprint',()=>{
+  gv('print-out').innerHTML=gv('t-preview').innerHTML+gv('d-preview').innerHTML;
+  gv('print-out').style.display='block';
+});
+window.addEventListener('afterprint',()=>{ gv('print-out').style.display='none'; });
+
+load();
+</script>
+</body>
+</html>
