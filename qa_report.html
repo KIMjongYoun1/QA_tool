@@ -281,7 +281,7 @@ textarea.tc-efield{resize:vertical;min-height:44px;}
 .tc-pf-row{display:flex;gap:5px;flex-wrap:wrap;}
 .tc-pf-row .pf-btn{padding:4px 10px;font-size:.72rem;}
 .tc-cat-row{display:flex;align-items:center;gap:6px;}
-.tc-cat-row select{background:#fff;border:1px solid #cbd5e1;border-radius:5px;color:#1e293b;font-family:inherit;font-size:.78rem;padding:4px 7px;flex:1;}
+.tc-cat-row select{background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:inherit;font-size:.78rem;padding:4px 7px;flex:1;}
 /* 배포 박스 */
 .dep-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:11px 15px;margin-bottom:5mm;}
 .dep-row{display:flex;gap:16px;flex-wrap:wrap;}
@@ -340,6 +340,7 @@ td.drag-handle:active{cursor:grabbing;}
   .page:last-child{page-break-after:auto;}
   .tc{page-break-inside:avoid;}
   .tc-exec{display:none!important;}
+  .tc-exec-static{display:block!important;}
   .ev-add{display:none!important;}
   .ev-photos img{width:160px;height:104px;}
 }
@@ -883,6 +884,10 @@ function setPFExec(mode,id,pf,btn){
       badge.textContent=pf;
     }
   }
+  const previewEl=gv(mode==='tst'?'t-preview':'d-preview');
+  const scrollTop=previewEl?previewEl.scrollTop:0;
+  mode==='tst'?renderTst():renderDep();
+  if(previewEl) previewEl.scrollTop=scrollTop;
 }
 
 function renderTstList(){
@@ -1142,7 +1147,12 @@ function tcCard(tc,mode){
         <option value="">-- 미분류 --</option>${catOpts}
       </select>
     </div>
-  </div>${evHtml}</div>`;
+  </div>
+  <div class="tc-exec-static" style="display:none;padding:6px 12px;background:#f0f4ff;border-top:1px solid #e2e8f0;font-size:7.5pt;">
+    <div class="tc-row"><span class="l">${mode==='tst'?'실제 결과':'확인 결과'}</span><span class="v">${esc(tc.actual)||'-'}</span></div>
+    <div class="tc-row"><span class="l">수행자</span><span class="v">${esc(tc.owner)||'-'}</span>&nbsp;&nbsp;<span class="l">수행일자</span><span class="v">${tc.date||'-'}</span>${tc.notes?`&nbsp;&nbsp;<span class="l">비고</span><span class="v">${esc(tc.notes)}</span>`:''}</div>
+  </div>
+  ${evHtml}</div>`;
 }
 
 /* ══════════════════════
