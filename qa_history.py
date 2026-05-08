@@ -17,7 +17,7 @@ import os
 import glob
 from datetime import datetime
 import openpyxl
-from openpyxl.styles import PatternFill, Font, Alignment, Border, Side, PatternFill
+from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
 # ── 설정 ──────────────────────────────────────────────
@@ -34,6 +34,12 @@ C_PASS          = "D4EDDA"
 C_FAIL          = "F8D7DA"
 C_NA            = "FFF3CD"
 C_ROW_ALT       = "F8F9FA"
+
+def fmt_date(s):
+    """YYYY-MM-DDTHH:MM → YYYY-MM-DD HH:MM (T 제거)"""
+    if not s:
+        return ""
+    return str(s).replace('T', ' ')
 
 def cell_style(ws, row, col, value, bold=False, color=None, bg=None, align="left", wrap=False):
     c = ws.cell(row=row, column=col, value=value)
@@ -191,8 +197,8 @@ def write_deploy_history(ws, all_data):
             dc.get("배포 버전", ""),
             dc.get("배포 환경", ""),
             dc.get("배포 유형", ""),
-            dc.get("배포 시작", ""),
-            dc.get("배포 완료", ""),
+            fmt_date(dc.get("배포 시작", "")),
+            fmt_date(dc.get("배포 완료", "")),
             dc.get("배포자", ""),
             dc.get("승인자", ""),
             dc.get("대상 서버", ""),
@@ -299,7 +305,7 @@ def write_case_history(ws, all_data):
                 cid, name, r.get("구분",""),
                 ver, env, dep_date,
                 pf,
-                r.get("수행자",""), str(r.get("수행일자","") or ""),
+                r.get("수행자",""), fmt_date(r.get("수행일자","") or ""),
                 r.get("실제 결과",""),
                 r.get("비고",""),
             ]
@@ -340,7 +346,7 @@ def write_deploy_detail(ws, all_data):
                 r.get("카테고리",""), r.get("항목 ID",""), r.get("확인 항목명",""),
                 r.get("확인 기준",""), r.get("확인 결과",""),
                 pf,
-                r.get("수행자",""), str(r.get("수행일시","") or ""), r.get("비고",""),
+                r.get("수행자",""), fmt_date(r.get("수행일시","") or ""), r.get("비고",""),
             ]
             row_bg = C_ROW_ALT if ri%2==0 else "FFFFFF"
             for ci, val in enumerate(vals, 1):

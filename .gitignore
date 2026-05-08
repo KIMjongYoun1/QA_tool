@@ -1,6 +1,9 @@
 # Claude Code
 .claude/
 
+# 수정 가이드 문서
+CHANGES.md
+
 # macOS
 .DS_Store
 

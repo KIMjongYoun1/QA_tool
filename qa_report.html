@@ -48,15 +48,18 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 /* ── 전체 레이아웃 ── */
 .tab-page{display:none;height:calc(100vh - 52px);}
 .tab-page.on{display:grid;}
-.tab-page.two-col{grid-template-columns:320px 1fr;}
+.tab-page.two-col{grid-template-columns:clamp(240px,22vw,340px) 1fr;}
 .tab-page.full{grid-template-columns:1fr;}
 
 /* ── 사이드바 ── */
 .sidebar{
   border-right:1px solid var(--border);background:var(--surface);
   display:flex;flex-direction:column;gap:0;
-  height:calc(100vh - 52px);overflow:hidden;
+  height:calc(100vh - 52px);overflow-y:scroll;overflow-x:hidden;
 }
+.sidebar::-webkit-scrollbar{width:6px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.sidebar::-webkit-scrollbar-track{background:transparent;}
 /* 각 섹션 헤더 */
 .sb-hdr{
   padding:10px 14px;display:flex;align-items:center;justify-content:space-between;
@@ -71,17 +74,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .sb-hdr.c-dep{color:var(--deploy);}
 /* 각 섹션 바디 - 개별 스크롤 */
 .sb-body{
-  overflow-y:auto;overflow-x:hidden;padding:12px;
+  overflow:hidden;padding:0 12px;
   display:flex;flex-direction:column;gap:8px;
   border-bottom:1px solid var(--border);
-  /* 기본: 접힌 상태 */
-  max-height:0;transition:max-height .2s ease;
+  max-height:0;transition:max-height .3s ease,padding .3s ease;
 }
-.sb-body.open{max-height:320px;}
-.sb-body.open.tall{max-height:440px;}
-.sb-body.open.xl{max-height:600px;}
-.sb-body::-webkit-scrollbar{width:3px;}
-.sb-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.sb-body.open{max-height:9999px;padding:12px;}
+.sb-body.open.tall{max-height:9999px;}
+.sb-body.open.xl{max-height:9999px;}
 
 /* ── 폼 요소 ── */
 label{display:block;font-size:.68rem;color:var(--muted);margin-bottom:3px;font-weight:500;}
@@ -92,7 +92,7 @@ input,select,textarea{
 }
 input[type="datetime-local"],input[type="date"]{font-size:.78rem;padding:7px 8px;}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);}
-textarea{resize:vertical;min-height:48px;}
+textarea{resize:none;min-height:48px;}
 select option{background:var(--surface2);}
 .fg{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
 .cat-item{display:flex;align-items:center;gap:6px;padding:6px 9px;background:var(--bg);border:1px solid var(--border);border-radius:6px;}
@@ -164,7 +164,7 @@ tbody tr{border-bottom:1px solid rgba(46,50,80,.5);transition:background .1s;}
 tbody tr:hover{background:rgba(79,140,255,.04);}
 tbody tr:last-child{border-bottom:none;}
 td{padding:9px 13px;vertical-align:middle;}
-.cell-txt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:160px;}
+.cell-txt{display:block;max-width:200px;white-space:pre-wrap;word-break:break-word;}
 .badge{display:inline-block;padding:2px 9px;border-radius:14px;font-size:.68rem;font-weight:700;}
 .badge.pos{background:rgba(34,197,94,.12);color:var(--pass);border:1px solid rgba(34,197,94,.22);}
 .badge.neg{background:rgba(245,158,11,.12);color:var(--warn);border:1px solid rgba(245,158,11,.22);}
@@ -184,6 +184,7 @@ td{padding:9px 13px;vertical-align:middle;}
   background:white;width:210mm;min-height:297mm;padding:18mm 22mm;
   box-shadow:0 4px 20px rgba(0,0,0,.22);color:#1a1a2e;
   font-family:'Noto Sans KR','Malgun Gothic',sans-serif;position:relative;
+  overflow-x:hidden;box-sizing:border-box;
 }
 /* 표지 */
 .cover{display:flex;flex-direction:column;min-height:261mm;}
@@ -232,7 +233,7 @@ td{padding:9px 13px;vertical-align:middle;}
 /* r-table */
 .rtbl{width:100%;border-collapse:collapse;font-size:8.5pt;}
 .rtbl th{background:#f8fafc;padding:7px 10px;text-align:left;border:1px solid #e2e8f0;color:#475569;font-weight:700;font-size:7.5pt;}
-.rtbl td{padding:7px 10px;border:1px solid #e2e8f0;vertical-align:top;color:#1e293b;}
+.rtbl td{padding:7px 10px;border:1px solid #e2e8f0;vertical-align:top;color:#1e293b;word-break:break-word;overflow-wrap:break-word;white-space:pre-wrap;}
 .rtbl tr:nth-child(even) td{background:#fafafa;}
 /* 카테고리 헤더 */
 .cat-hdr{border-radius:0 7px 7px 0;padding:8px 13px;margin-bottom:3mm;display:flex;align-items:center;justify-content:space-between;}
@@ -249,7 +250,7 @@ td{padding:9px 13px;vertical-align:middle;}
 .tc-hd{background:#f8fafc;padding:8px 12px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #e2e8f0;}
 .tc-id{font-family:monospace;font-size:7.5pt;font-weight:700;padding:2px 6px;border-radius:3px;flex-shrink:0;}
 .tc-id.tst{color:#4f8cff;background:#eef2ff;} .tc-id.dep{color:#0ea5e9;background:#e0f2fe;}
-.tc-name{flex:1;font-size:9pt;font-weight:700;color:#0f172a;}
+.tc-name{flex:1;font-size:9pt;font-weight:700;color:#0f172a;word-break:break-word;overflow-wrap:break-word;}
 .tc-badge{padding:2px 8px;border-radius:9px;font-size:7pt;font-weight:700;flex-shrink:0;}
 .tc-badge.pass{background:#dcfce7;color:#16a34a;border:1px solid #bbf7d0;}
 .tc-badge.fail{background:#fee2e2;color:#dc2626;border:1px solid #fecdd3;}
@@ -258,7 +259,7 @@ td{padding:9px 13px;vertical-align:middle;}
 .tc-badge.neg{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;}
 .tc-bd{padding:8px 12px;display:flex;flex-direction:column;gap:5px;}
 .tc-row{display:grid;grid-template-columns:80px 1fr;gap:4px;font-size:8pt;}
-.tc-row .l{color:#64748b;font-weight:600;} .tc-row .v{color:#1e293b;}
+.tc-row .l{color:#64748b;font-weight:600;} .tc-row .v{color:#1e293b;word-break:break-word;overflow-wrap:break-word;white-space:pre-wrap;}
 .tc-meta{display:flex;gap:10px;padding-top:4px;border-top:1px solid #f1f5f9;font-size:7.5pt;color:#64748b;}
 /* 증적 */
 .ev-area{padding:7px 12px;background:#f8fafc;border-top:1px solid #e2e8f0;}
@@ -276,7 +277,7 @@ td{padding:9px 13px;vertical-align:middle;}
 .tc-exec-label{font-size:.65rem;color:#64748b;font-weight:600;margin-bottom:1px;}
 .tc-efield{width:100%;background:#fff;border:1px solid #cbd5e1;border-radius:5px;color:#1e293b;font-family:inherit;font-size:.8rem;padding:5px 8px;outline:none;transition:border-color .15s;}
 .tc-efield:focus{border-color:#4f8cff;}
-textarea.tc-efield{resize:vertical;min-height:44px;}
+textarea.tc-efield{resize:none;min-height:60px;}
 .tc-ef2{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
 .tc-pf-row{display:flex;gap:5px;flex-wrap:wrap;}
 .tc-pf-row .pf-btn{padding:4px 10px;font-size:.72rem;}
@@ -286,7 +287,7 @@ textarea.tc-efield{resize:vertical;min-height:44px;}
 .dep-box{background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:11px 15px;margin-bottom:5mm;}
 .dep-row{display:flex;gap:16px;flex-wrap:wrap;}
 .dbi .dl{font-size:7pt;color:#64748b;font-weight:600;display:block;}
-.dbi .dv{font-size:9pt;font-weight:700;color:#0f172a;}
+.dbi .dv{font-size:9pt;font-weight:700;color:#0f172a;word-break:break-word;overflow-wrap:break-word;}
 .env-badge{display:inline-block;padding:2px 9px;border-radius:9px;font-size:8pt;font-weight:700;}
 .env-badge.prod{background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;}
 .env-badge.staging{background:#fef3c7;color:#92400e;border:1px solid #fde68a;}
@@ -297,6 +298,17 @@ textarea.tc-efield{resize:vertical;min-height:44px;}
 /* ── 토스트 ── */
 .toast{position:fixed;bottom:20px;right:20px;background:var(--surface2);border:1px solid var(--accent);border-radius:8px;padding:10px 15px;color:var(--text);font-size:.82rem;font-weight:500;opacity:0;transform:translateY(6px);transition:all .25s;z-index:9999;}
 .toast.show{opacity:1;transform:translateY(0);}
+.detail-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10000;align-items:center;justify-content:center;}
+.detail-overlay.show{display:flex;}
+.detail-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;width:520px;max-width:92vw;max-height:80vh;overflow-y:auto;padding:22px 24px;position:relative;}
+.detail-box h3{font-size:.95rem;font-weight:700;color:var(--text);margin:0 0 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.detail-row{display:grid;grid-template-columns:90px 1fr;gap:6px 12px;font-size:.82rem;margin-bottom:8px;}
+.detail-row .dl{color:var(--muted);font-weight:600;padding-top:2px;}
+.detail-row .dv{color:var(--text);white-space:pre-wrap;word-break:break-word;line-height:1.5;}
+.detail-close{position:absolute;top:14px;right:16px;background:transparent;border:none;font-size:1.1rem;cursor:pointer;color:var(--muted);}
+.detail-close:hover{color:var(--text);}
+.tr-clickable{cursor:pointer;}
+.tr-clickable:hover td{background:rgba(79,140,255,.06);}
 
 /* ── 검색/필터 바 ── */
 .filter-bar{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
@@ -336,9 +348,10 @@ td.drag-handle:active{cursor:grabbing;}
     width:210mm!important;min-height:0!important;
     box-shadow:none!important;padding:14mm 18mm!important;
     page-break-after:always;margin:0 auto;
+    overflow-x:hidden!important;box-sizing:border-box!important;
   }
   .page:last-child{page-break-after:auto;}
-  .tc{page-break-inside:avoid;}
+  .tc{page-break-inside:auto;}
   .tc-exec{display:none!important;}
   .tc-exec-static{display:block!important;}
   .ev-add{display:none!important;}
@@ -374,8 +387,8 @@ td.drag-handle:active{cursor:grabbing;}
         <div><label>케이스 ID</label><input id="m-id" placeholder="TC-001"></div>
         <div><label>구분</label><select id="m-type"><option value="Positive">Positive</option><option value="Negative">Negative</option></select></div>
       </div>
-      <div><label>테스트 항목명</label><input id="m-name" placeholder="예: 로그인 버튼 클릭 시 정상 이동"></div>
-      <div><label>입력값</label><input id="m-input" placeholder="예: ID: test@test.com / PW: 1234"></div>
+      <div><label>테스트 항목명</label><textarea id="m-name" rows="2" placeholder="예: 로그인 버튼 클릭 시 정상 이동"></textarea></div>
+      <div><label>입력값</label><textarea id="m-input" rows="2" placeholder="예: ID: test@test.com / PW: 1234"></textarea></div>
       <div><label>기대 결과</label><textarea id="m-expected" placeholder="예: 메인 화면으로 이동되어야 함"></textarea></div>
       <div><label>실제 결과</label><textarea id="m-actual" placeholder="예: 메인 화면으로 정상 이동됨"></textarea></div>
       <div><label>Pass / Fail</label>
@@ -385,12 +398,24 @@ td.drag-handle:active{cursor:grabbing;}
           <button class="pf-btn na" onclick="mSetPF('N/A',this)">N/A</button>
         </div>
       </div>
+      <div><label>카테고리</label>
+        <select id="m-catid"><option value="">-- 미분류 --</option></select>
+      </div>
       <div class="fg">
         <div><label>담당자</label><input id="m-owner" placeholder="홍길동"></div>
-        <div><label>수행일자</label><input type="date" id="m-date"></div>
+        <div><label>수행일자</label><input type="datetime-local" id="m-date"></div>
       </div>
       <button class="add-full mgr" id="m-submit-btn" onclick="mSubmit()">+ 케이스 추가</button>
       <button class="tbtn ghost" id="m-cancel-btn" style="display:none;width:100%;justify-content:center;font-size:.76rem;margin-top:4px;" onclick="mCancelEdit()">✕ 수정 취소</button>
+    </div>
+
+    <div class="sb-hdr c-mgr open" onclick="toggleSb(this)">📁 카테고리 관리 <span class="arrow">▼</span></div>
+    <div class="sb-body open">
+      <div id="m-catlist"></div>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <input id="m-newcat" placeholder="카테고리 이름" style="flex:1;" onkeydown="if(event.key==='Enter')addCat('mgr')">
+        <button class="btn-sm add mgr" onclick="addCat('mgr')">추가</button>
+      </div>
     </div>
 
     <div class="sb-hdr c-mgr open" onclick="toggleSb(this)">📊 통계 <span class="arrow">▼</span></div>
@@ -440,7 +465,7 @@ td.drag-handle:active{cursor:grabbing;}
           <thead>
             <tr>
               <th style="width:30px;"></th>
-              <th>ID</th><th>테스트 항목명</th><th>구분</th><th>입력값</th>
+              <th>ID</th><th>테스트 항목명</th><th>구분</th><th>카테고리</th><th>입력값</th>
               <th>기대 결과</th><th>실제 결과</th><th>P/F</th>
               <th>담당자</th><th>수행일자</th><th>수정</th><th>삭제</th>
             </tr>
@@ -466,30 +491,27 @@ td.drag-handle:active{cursor:grabbing;}
       </div>
       <div><label>문서번호</label><input id="t-docnum" placeholder="QA-2026-001" oninput="renderTst()"></div>
       <div class="fg">
-        <div><label>시작일</label><input type="date" id="t-start" oninput="renderTst()"></div>
-        <div><label>종료일</label><input type="date" id="t-end" oninput="renderTst()"></div>
+        <div><label>시작일</label><input type="datetime-local" id="t-start" oninput="renderTst()"></div>
+        <div><label>종료일</label><input type="datetime-local" id="t-end" oninput="renderTst()"></div>
       </div>
       <div><label>테스트 환경</label><input id="t-env" placeholder="Chrome 124, Android 14" oninput="renderTst()"></div>
       <div class="fg">
         <div><label>작성자</label><input id="t-author" placeholder="홍길동" oninput="renderTst()"></div>
         <div><label>승인자</label><input id="t-approver" placeholder="김철수" oninput="renderTst()"></div>
       </div>
-      <div><label>작성일</label><input type="date" id="t-date" oninput="renderTst()"></div>
+      <div><label>작성일</label><input type="datetime-local" id="t-date" oninput="renderTst()"></div>
     </div>
 
     <div class="sb-hdr c-tst open" onclick="toggleSb(this)">📁 카테고리 <span class="arrow">▼</span></div>
     <div class="sb-body open">
       <div id="t-catlist"></div>
-      <div style="display:flex;gap:6px;">
-        <input id="t-newcat" placeholder="카테고리 이름" style="flex:1;" onkeydown="if(event.key==='Enter')addCat('tst')">
-        <button class="btn-sm add" onclick="addCat('tst')">추가</button>
-      </div>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:4px;">카테고리는 케이스 관리에서 설정합니다.</p>
     </div>
 
     <div class="sb-hdr c-tst open" onclick="toggleSb(this)">⚡ 일괄 입력 <span class="arrow">▼</span></div>
     <div class="sb-body open">
       <div><label>수행자</label><input id="t-bulk-owner" placeholder="홍길동"></div>
-      <div><label>수행일자</label><input type="date" id="t-bulk-date"></div>
+      <div><label>수행일자</label><input type="datetime-local" id="t-bulk-date"></div>
       <div style="display:flex;gap:6px;margin-top:2px;">
         <button class="btn-sm add" style="flex:1;" onclick="bulkApply('tst','all')">전체 적용</button>
         <button class="btn-sm" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);" onclick="bulkApply('tst','empty')">빈 항목만</button>
@@ -529,7 +551,7 @@ td.drag-handle:active{cursor:grabbing;}
         <div><label>배포자</label><input id="d-deployer" placeholder="홍길동" oninput="renderDep()"></div>
         <div><label>승인자</label><input id="d-approver" placeholder="김철수" oninput="renderDep()"></div>
       </div>
-      <div><label>작성일</label><input type="date" id="d-date" oninput="renderDep()"></div>
+      <div><label>작성일</label><input type="datetime-local" id="d-date" oninput="renderDep()"></div>
       <div><label>대상 서버</label><input id="d-target" placeholder="api.example.com" oninput="renderDep()"></div>
       <div><label>배포 내용 요약</label><textarea id="d-summary" placeholder="주요 변경사항 요약" oninput="renderDep()"></textarea></div>
     </div>
@@ -537,16 +559,13 @@ td.drag-handle:active{cursor:grabbing;}
     <div class="sb-hdr c-dep open" onclick="toggleSb(this)">📁 카테고리 <span class="arrow">▼</span></div>
     <div class="sb-body open">
       <div id="d-catlist"></div>
-      <div style="display:flex;gap:6px;">
-        <input id="d-newcat" placeholder="카테고리 이름" style="flex:1;" onkeydown="if(event.key==='Enter')addCat('dep')">
-        <button class="btn-sm add dep" onclick="addCat('dep')">추가</button>
-      </div>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:4px;">카테고리는 케이스 관리에서 설정합니다.</p>
     </div>
 
     <div class="sb-hdr c-dep open" onclick="toggleSb(this)">⚡ 일괄 입력 <span class="arrow">▼</span></div>
     <div class="sb-body open">
       <div><label>수행자</label><input id="d-bulk-owner" placeholder="홍길동"></div>
-      <div><label>수행일시</label><input type="datetime-local" id="d-bulk-date"></div>
+      <div><label>수행일자</label><input type="datetime-local" id="d-bulk-date"></div>
       <div style="display:flex;gap:6px;margin-top:2px;">
         <button class="btn-sm add dep" style="flex:1;" onclick="bulkApply('dep','all')">전체 적용</button>
         <button class="btn-sm" style="flex:1;background:var(--surface2);color:var(--text);border:1px solid var(--border);" onclick="bulkApply('dep','empty')">빈 항목만</button>
@@ -561,6 +580,17 @@ td.drag-handle:active{cursor:grabbing;}
 </div>
 
 <div class="toast" id="toast"></div>
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail(event)">
+  <div class="detail-box" id="detail-box">
+    <button class="detail-close" onclick="closeDetailBox()">✕</button>
+    <h3 id="detail-title"></h3>
+    <div id="detail-body"></div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn-sm" style="background:#f59e0b;color:#fff;padding:6px 16px;" id="detail-edit-btn">수정</button>
+      <button class="btn-sm" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);padding:6px 16px;" onclick="closeDetailBox()">닫기</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ══════════════════════
@@ -569,9 +599,10 @@ td.drag-handle:active{cursor:grabbing;}
 const SK = 'qa_all_v2';
 const TCOLS = ['#4f8cff','#7c3aed','#16a34a','#dc2626','#d97706','#0891b2','#be185d'];
 const DCOLS = ['#0ea5e9','#7c3aed','#16a34a','#dc2626','#d97706','#be185d'];
+const CATCOLS = ['#4f8cff','#7c3aed','#16a34a','#dc2626','#d97706','#0891b2','#be185d','#0ea5e9'];
 
 let db = {
-  mgr: { cases: [] },
+  mgr: { cats: [], cases: [] },
   tst: {
     cover: { company:'',project:'',system:'',version:'v1.0',docNumber:'',start:'',end:'',environment:'',author:'',approver:'',date:tod() },
     cats: [],
@@ -579,11 +610,7 @@ let db = {
   },
   dep: {
     cover: { company:'',project:'',version:'',environment:'Production',docNumber:'',deployType:'정기 배포',start:'',end:'',deployer:'',approver:'',date:tod(),target:'',summary:'' },
-    cats: [
-      {id:'dc1',name:'배포 전 체크리스트',color:'#d97706'},
-      {id:'dc2',name:'배포 수행 항목',color:'#0ea5e9'},
-      {id:'dc3',name:'배포 후 검증',color:'#16a34a'},
-    ],
+    cats: [],
     cases: []
   }
 };
@@ -591,7 +618,7 @@ let db = {
 let mPF='Pass', tPF='Pass', dPF='완료';
 let mEditIdx = -1;
 
-function tod(){ return new Date().toISOString().split('T')[0]; }
+function tod(){ const n=new Date(),p=x=>String(x).padStart(2,'0'); return `${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())}T${p(n.getHours())}:${p(n.getMinutes())}`; }
 
 function save(){ localStorage.setItem(SK, JSON.stringify(db)); }
 function load(){
@@ -602,19 +629,21 @@ function load(){
   } else {
     try { db = JSON.parse(s); } catch(e){}
   }
+  if(!db.mgr.cats) db.mgr.cats=[];
   // 구버전 마이그레이션: tst/dep cases에 name 등이 있으면 mgr로 이동
   db.tst.cases.forEach(tc=>{
     if(tc.name && !db.mgr.cases.find(m=>m.id===tc.id))
-      db.mgr.cases.push({id:tc.id, name:tc.name, type:tc.type||'Positive', input:tc.input||'', expected:tc.expected||'', actual:'', pf:'Pass', owner:'', date:''});
+      db.mgr.cases.push({id:tc.id, name:tc.name, type:tc.type||'Positive', input:tc.input||'', expected:tc.expected||'', actual:'', pf:'Pass', owner:'', date:'', catId:''});
   });
   db.dep.cases.forEach(dc=>{
     if(dc.name && !db.mgr.cases.find(m=>m.id===dc.id))
-      db.mgr.cases.push({id:dc.id, name:dc.name, type:'Positive', input:dc.input||'', expected:dc.expected||'', actual:'', pf:'Pass', owner:'', date:''});
+      db.mgr.cases.push({id:dc.id, name:dc.name, type:'Positive', input:dc.input||'', expected:dc.expected||'', actual:'', pf:'Pass', owner:'', date:'', catId:''});
   });
   // execution-only 필드만 남기기
   db.tst.cases=db.tst.cases.map(tc=>({id:tc.id,catId:tc.catId||'',actual:tc.actual||'',pf:tc.pf||'N/A',owner:tc.owner||'',date:tc.date||'',notes:tc.notes||'',evidence:tc.evidence||[]}));
   db.dep.cases=db.dep.cases.map(dc=>({id:dc.id,catId:dc.catId||'',actual:dc.actual||'',pf:dc.pf||'미완료',owner:dc.owner||'',date:dc.date||'',notes:dc.notes||'',evidence:dc.evidence||[]}));
   syncCases();
+  renderMgrCatSelect();
   applyForms();
   renderAll();
 }
@@ -665,14 +694,16 @@ function mSetPF(v,btn){ mPF=v; btn.parentElement.querySelectorAll('.pf-btn').for
 function mSubmit(){
   const name=v('m-name'); if(!name){ toast('항목명을 입력해주세요'); return; }
   const data={id:v('m-id')||mNext(), name, type:v('m-type'), input:v('m-input'),
-    expected:v('m-expected'), actual:v('m-actual'), pf:mPF, owner:v('m-owner'), date:v('m-date')};
+    expected:v('m-expected'), actual:v('m-actual'), pf:mPF, owner:v('m-owner'), date:v('m-date'),
+    catId:v('m-catid')};
   if(mEditIdx>=0){
-    data.id=db.mgr.cases[mEditIdx].id; // ID 유지
+    data.id=db.mgr.cases[mEditIdx].id;
     db.mgr.cases[mEditIdx]=data;
     mCancelEdit(); toast('수정됐습니다 ✓');
   } else {
     db.mgr.cases.push(data);
     ['m-id','m-name','m-input','m-expected','m-actual','m-owner'].forEach(i=>gv(i).value='');
+    gv('m-catid').value='';
     gv('m-id').placeholder=mNext(); toast('케이스가 추가됐습니다 ✓');
   }
   syncCases(); save(); renderMgr(); renderTst(); renderDep();
@@ -683,6 +714,7 @@ function mEdit(i){
   gv('m-id').value=c.id; gv('m-name').value=c.name; gv('m-type').value=c.type||'Positive';
   gv('m-input').value=c.input||''; gv('m-expected').value=c.expected||'';
   gv('m-actual').value=c.actual||''; gv('m-owner').value=c.owner||''; gv('m-date').value=c.date||'';
+  gv('m-catid').value=c.catId||'';
   mPF=c.pf||'Pass';
   gv('m-id').disabled=true;
   const pfMap={'Pass':'PASS','Fail':'FAIL','N/A':'N/A'};
@@ -692,7 +724,6 @@ function mEdit(i){
   gv('m-submit-btn').textContent='✔ 수정 완료';
   gv('m-submit-btn').style.background='linear-gradient(135deg,#f59e0b,#d97706)';
   gv('m-cancel-btn').style.display='flex';
-  // 사이드바 섹션 열기
   const hdr=document.querySelector('#tab-mgr .sb-hdr.c-mgr');
   if(hdr && !hdr.classList.contains('open')){ hdr.classList.add('open'); hdr.nextElementSibling.classList.add('open'); }
   hdr.scrollIntoView({behavior:'smooth',block:'start'});
@@ -701,6 +732,7 @@ function mEdit(i){
 function mCancelEdit(){
   mEditIdx=-1;
   ['m-id','m-name','m-input','m-expected','m-actual','m-owner'].forEach(i=>gv(i).value='');
+  gv('m-catid').value='';
   gv('m-id').disabled=false; gv('m-id').placeholder=mNext();
   gv('m-date').value=tod(); mPF='Pass';
   document.querySelectorAll('#tab-mgr .sb-body .pf-btn').forEach((b,i)=>b.classList.toggle('on',i===0));
@@ -733,21 +765,24 @@ function renderMgr(){
   gv('f-count').textContent=fSearch||fType||fPF?`${filtered.length}/${tot}건 표시`:'';
   empty.style.display=filtered.length?'none':'block';
   if(!filtered.length){ tbody.innerHTML=''; return; }
-  tbody.innerHTML=filtered.map(({c,i})=>`
-    <tr draggable="true" data-idx="${i}" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dragDrop(event,${i})" ondragleave="dragLeave(event)" style="${mEditIdx===i?'background:rgba(245,158,11,.1);outline:2px solid #f59e0b;outline-offset:-1px;':''}">
-      <td class="drag-handle" title="드래그하여 순서 변경">⠿</td>
+  tbody.innerHTML=filtered.map(({c,i})=>{
+    const cat=db.mgr.cats.find(x=>x.id===c.catId);
+    return `
+    <tr class="tr-clickable" draggable="true" data-idx="${i}" ondragstart="dragStart(event,${i})" ondragover="dragOver(event)" ondrop="dragDrop(event,${i})" ondragleave="dragLeave(event)" onclick="showDetail(${i})" style="${mEditIdx===i?'background:rgba(245,158,11,.1);outline:2px solid #f59e0b;outline-offset:-1px;':''}">
+      <td class="drag-handle" title="드래그하여 순서 변경" onclick="event.stopPropagation()">⠿</td>
       <td><span style="font-family:monospace;font-size:.75rem;color:var(--accent)">${esc(c.id)}</span></td>
-      <td><span class="cell-txt" title="${esc(c.name)}">${esc(c.name)}</span></td>
+      <td><span class="cell-txt">${esc(c.name)}</span></td>
       <td><span class="badge ${c.type==='Positive'?'pos':'neg'}">${c.type}</span></td>
-      <td><span class="cell-txt" title="${esc(c.input)}">${esc(c.input)||'-'}</span></td>
-      <td><span class="cell-txt" title="${esc(c.expected)}">${esc(c.expected)||'-'}</span></td>
-      <td><span class="cell-txt" title="${esc(c.actual)}">${esc(c.actual)||'-'}</span></td>
+      <td>${cat?`<span class="cat-dot" style="display:inline-block;background:${cat.color};width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle;"></span>${esc(cat.name)}`:'-'}</td>
+      <td><span class="cell-txt">${esc(c.input)||'-'}</span></td>
+      <td><span class="cell-txt">${esc(c.expected)||'-'}</span></td>
+      <td><span class="cell-txt">${esc(c.actual)||'-'}</span></td>
       <td><span class="badge ${c.pf==='Pass'?'pass':c.pf==='Fail'?'fail':'na'}">${c.pf||'-'}</span></td>
       <td>${esc(c.owner)||'-'}</td>
       <td style="white-space:nowrap">${c.date||'-'}</td>
-      <td><button class="btn-sm" style="background:#f59e0b;color:#fff;" onclick="mEdit(${i})">수정</button></td>
-      <td><button class="btn-sm del" onclick="mDel(${i})">삭제</button></td>
-    </tr>`).join('');
+      <td onclick="event.stopPropagation()"><button class="btn-sm" style="background:#f59e0b;color:#fff;" onclick="mEdit(${i})">수정</button></td>
+      <td onclick="event.stopPropagation()"><button class="btn-sm del" onclick="mDel(${i})">삭제</button></td>
+    </tr>`;}).join('');
   gv('m-id').placeholder=mNext();
 }
 
@@ -829,38 +864,51 @@ function importJSON(input){
    탭2: 테스트결과서 - 카테고리
 ══════════════════════ */
 function addCat(mode){
-  const inp=gv(mode==='tst'?'t-newcat':'d-newcat');
+  const inp=gv(mode==='mgr'?'m-newcat':mode==='tst'?'t-newcat':'d-newcat');
   const name=inp.value.trim(); if (!name) return;
-  const cols=mode==='tst'?TCOLS:DCOLS;
-  const arr=db[mode].cats;
-  arr.push({id:`${mode[0]}c${Date.now()}`,name,color:cols[arr.length%cols.length]});
-  inp.value=''; save(); mode==='tst'?renderTst():renderDep();
+  const arr=db.mgr.cats;
+  arr.push({id:`mc${Date.now()}`,name,color:CATCOLS[arr.length%CATCOLS.length]});
+  inp.value=''; syncCases(); save(); renderCats('mgr'); renderMgrCatSelect(); renderTst(); renderDep();
 }
 function delCat(mode,id){
-  db[mode].cats=db[mode].cats.filter(c=>c.id!==id);
-  db[mode].cases.forEach(c=>{if(c.catId===id)c.catId='';});
-  save(); mode==='tst'?renderTst():renderDep();
+  db.mgr.cats=db.mgr.cats.filter(c=>c.id!==id);
+  db.mgr.cases.forEach(c=>{if(c.catId===id)c.catId='';});
+  syncCases(); save(); renderCats('mgr'); renderMgrCatSelect(); renderTst(); renderDep();
 }
 function renderCats(mode){
-  const cats=db[mode].cats;
-  const listEl=gv(mode==='tst'?'t-catlist':'d-catlist');
+  const cats=db.mgr.cats;
+  const listElId=mode==='mgr'?'m-catlist':mode==='tst'?'t-catlist':'d-catlist';
+  const listEl=gv(listElId); if(!listEl) return;
   listEl.innerHTML=cats.length?cats.map(c=>`
     <div class="cat-item">
       <div class="cat-dot" style="background:${c.color}"></div>
       <span>${esc(c.name)}</span>
-      <button class="btn-sm del" onclick="delCat('${mode}','${c.id}')">✕</button>
+      ${mode==='mgr'?`<button class="btn-sm del" onclick="delCat('mgr','${c.id}')">✕</button>`:''}
     </div>`).join('')
-    :`<p style="font-size:.73rem;color:var(--muted);text-align:center;padding:5px 0;">카테고리를 추가하세요</p>`;
+    :`<p style="font-size:.73rem;color:var(--muted);text-align:center;padding:5px 0;">${mode==='mgr'?'카테고리를 추가하세요':'케이스 관리에서 추가하세요'}</p>`;
+}
+function renderMgrCatSelect(){
+  const sel=gv('m-catid'); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML='<option value="">-- 미분류 --</option>'+db.mgr.cats.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  sel.value=cur;
 }
 
 /* ══ 케이스 동기화 (케이스관리 → 테스트/배포) ══ */
 function syncCases(){
+  db.tst.cats = db.mgr.cats;
+  db.dep.cats = db.mgr.cats;
   const mgrIds=new Set(db.mgr.cases.map(m=>m.id));
   db.mgr.cases.forEach(mc=>{
+    const catId=mc.catId||'';
     if (!db.tst.cases.find(tc=>tc.id===mc.id))
-      db.tst.cases.push({id:mc.id, catId:'', actual:mc.actual||'', pf:mc.pf||'N/A', owner:mc.owner||'', date:mc.date||'', notes:'', evidence:[]});
+      db.tst.cases.push({id:mc.id, catId, actual:mc.actual||'', pf:mc.pf||'N/A', owner:mc.owner||'', date:mc.date||'', notes:'', evidence:[]});
+    else
+      db.tst.cases.find(tc=>tc.id===mc.id).catId=catId;
     if (!db.dep.cases.find(dc=>dc.id===mc.id))
-      db.dep.cases.push({id:mc.id, catId:'', actual:'', pf:'미완료', owner:'', date:'', notes:'', evidence:[]});
+      db.dep.cases.push({id:mc.id, catId, actual:'', pf:'미완료', owner:'', date:'', notes:'', evidence:[]});
+    else
+      db.dep.cases.find(dc=>dc.id===mc.id).catId=catId;
   });
   db.tst.cases=db.tst.cases.filter(tc=>mgrIds.has(tc.id));
   db.dep.cases=db.dep.cases.filter(dc=>mgrIds.has(dc.id));
@@ -870,6 +918,13 @@ function syncCases(){
 function updateExec(mode,id,field,val){
   const c=db[mode].cases.find(x=>x.id===id); if(!c) return;
   c[field]=val; save();
+}
+function updateExecDP(mode,id,inp){
+  const c=db[mode].cases.find(x=>x.id===id); if(!c) return;
+  const wrap=inp.parentElement;
+  const d=wrap.querySelector('input[type="date"]')?.value||'';
+  const t=wrap.querySelector('input[type="time"]')?.value||'';
+  c.date=d?(t?`${d}T${t}`:d):''; save();
 }
 function setPFExec(mode,id,pf,btn){
   const c=db[mode].cases.find(x=>x.id===id); if(!c) return;
@@ -948,7 +1003,7 @@ function renderTst(){
   const c=db.tst.cover, cs=db.tst.cases;
   const tot=cs.length, pass=cs.filter(x=>x.pf==='Pass').length, fail=cs.filter(x=>x.pf==='Fail').length, na=cs.filter(x=>x.pf==='N/A').length;
   const rate=tot>0?Math.round((pass/tot)*100):0;
-  const fd=d=>d?d.replace(/-/g,'.'):'-';
+  const fd=d=>d?d.replace('T',' ').replace(/-/g,'.'):'-';
 
   const coverPage=`<div class="page"><div class="cover">
     <div class="cover-top">
@@ -1025,7 +1080,7 @@ function renderDep(){
   const c=db.dep.cover, cs=db.dep.cases;
   const tot=cs.length, done=cs.filter(x=>x.pf==='완료').length, fail=cs.filter(x=>x.pf==='미완료').length, skip=cs.filter(x=>x.pf==='스킵').length;
   const rate=tot>0?Math.round((done/tot)*100):0;
-  const fd=d=>d?d.replace(/-/g,'.'):'-';
+  const fd=d=>d?d.replace('T',' ').replace(/-/g,'.'):'-';
   const fdt=s=>s?s.replace('T',' ').substring(0,16):'-';
   const envCls={Production:'prod',Staging:'staging',Development:'dev'}[c.environment]||'';
 
@@ -1134,14 +1189,14 @@ function tcCard(tc,mode){
   </div>
   <div class="tc-exec">
     <div><div class="tc-exec-label">${mode==='tst'?'실제 결과':'확인 결과'}</div>
-      <textarea class="tc-efield" rows="2" onchange="updateExec('${mode}','${esc(tc.id)}','actual',this.value)">${esc(tc.actual||'')}</textarea>
+      <textarea class="tc-efield" rows="3" onchange="updateExec('${mode}','${esc(tc.id)}','actual',this.value)">${esc(tc.actual||'')}</textarea>
     </div>
     <div><div class="tc-exec-label">결과</div><div class="tc-pf-row">${pfBtns}</div></div>
     <div class="tc-ef2">
       <div><div class="tc-exec-label">수행자</div><input class="tc-efield" value="${esc(tc.owner||'')}" placeholder="이름" onchange="updateExec('${mode}','${esc(tc.id)}','owner',this.value)"></div>
-      <div><div class="tc-exec-label">수행일자</div><input class="tc-efield" type="date" value="${tc.date||''}" onchange="updateExec('${mode}','${esc(tc.id)}','date',this.value)"></div>
+      <div><div class="tc-exec-label">수행일자</div><div style="display:flex;gap:3px;"><input class="tc-efield" type="date" style="flex:1;min-width:0;" value="${tc.date?tc.date.split('T')[0]:''}" onchange="updateExecDP('${mode}','${esc(tc.id)}',this)"><input class="tc-efield" type="time" style="flex:0 0 80px;" value="${tc.date&&tc.date.includes('T')?tc.date.split('T')[1]:''}" onchange="updateExecDP('${mode}','${esc(tc.id)}',this)"></div></div>
     </div>
-    <div><div class="tc-exec-label">비고</div><input class="tc-efield" value="${esc(tc.notes||'')}" placeholder="특이사항" onchange="updateExec('${mode}','${esc(tc.id)}','notes',this.value)"></div>
+    <div><div class="tc-exec-label">비고</div><textarea class="tc-efield" rows="2" placeholder="특이사항&#10;1. 항목&#10;2. 항목" onchange="updateExec('${mode}','${esc(tc.id)}','notes',this.value)">${esc(tc.notes||'')}</textarea></div>
     <div class="tc-cat-row"><div class="tc-exec-label" style="white-space:nowrap">카테고리</div>
       <select onchange="updateExec('${mode}','${esc(tc.id)}','catId',this.value);${mode==='tst'?'renderTst()':'renderDep()'}">
         <option value="">-- 미분류 --</option>${catOpts}
@@ -1450,11 +1505,31 @@ async function exportExcel(){
 }
 
 /* ══ 유틸 ══ */
-function renderAll(){ syncCases(); renderMgr(); renderTst(); renderDep(); }
+function renderAll(){ syncCases(); renderMgrCatSelect(); renderCats('mgr'); renderCats('tst'); renderCats('dep'); renderMgr(); renderTst(); renderDep(); }
 function v(id){ return gv(id).value.trim(); }
 function gv(id){ return document.getElementById(id); }
 function esc(s){ if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function toast(msg){ const t=gv('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+
+function showDetail(i){
+  const c=db.mgr.cases[i]; if(!c) return;
+  const cat=db.mgr.cats.find(x=>x.id===c.catId);
+  const pfCls=c.pf==='Pass'?'pass':c.pf==='Fail'?'fail':'na';
+  gv('detail-title').innerHTML=`<span style="font-family:monospace;color:var(--accent);font-size:.8rem">${esc(c.id)}</span> ${esc(c.name)} <span class="badge ${pfCls}">${c.pf||'-'}</span>`;
+  gv('detail-body').innerHTML=`
+    <div class="detail-row"><span class="dl">구분</span><span class="dv"><span class="badge ${c.type==='Positive'?'pos':'neg'}">${c.type}</span></span></div>
+    ${cat?`<div class="detail-row"><span class="dl">카테고리</span><span class="dv"><span style="display:inline-block;background:${cat.color};width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle;"></span>${esc(cat.name)}</span></div>`:''}
+    ${c.input?`<div class="detail-row"><span class="dl">입력값</span><span class="dv">${esc(c.input)}</span></div>`:''}
+    <div class="detail-row"><span class="dl">기대 결과</span><span class="dv">${esc(c.expected)||'-'}</span></div>
+    <div class="detail-row"><span class="dl">실제 결과</span><span class="dv">${esc(c.actual)||'-'}</span></div>
+    <div class="detail-row"><span class="dl">담당자</span><span class="dv">${esc(c.owner)||'-'}</span></div>
+    <div class="detail-row"><span class="dl">수행일자</span><span class="dv">${c.date||'-'}</span></div>`;
+  gv('detail-edit-btn').onclick=()=>{ closeDetailBox(); mEdit(i); };
+  gv('detail-overlay').classList.add('show');
+}
+function closeDetail(e){ if(e.target===gv('detail-overlay')) closeDetailBox(); }
+function closeDetailBox(){ gv('detail-overlay').classList.remove('show'); }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDetailBox(); });
 
 window.addEventListener('beforeprint',()=>{
   gv('print-out').innerHTML=gv('t-preview').innerHTML+gv('d-preview').innerHTML;
